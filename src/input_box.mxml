@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ * 
+ * This source code file is part of the WebELS Software System.
+ * WebELS is under the WebELS Software License Agreement. 
+ * 
+ *        ***Preamble of WebELS Software License Agreement***
+ *
+ * This Software License Agreement (hereinafter referred to as License) 
+ * is a legal agreement between the User (either an individual or an entity, 
+ * who will be referred to in this License as User) and the WebELS Project 
+ * (represented by the project leader and patent owner, and will be referred 
+ * to in this License as WebELS) of National Institute of Informatics for 
+ * the use of WebELS Software (Software). By downloading, installing, copying, 
+ * modifying, redistributing, or using the Software, the User is agreeing to 
+ * be bound by the terms and conditions of this License. If you do not agree 
+ * to the terms and conditions of this License, do not download, install, copy, 
+ * modify, redistribute or use in any way as a whole or any part of the Software.
+ *
+ * For more details, see the WebELS Software License Agreement in 
+ * license.txt in root directory of this package. If not found, 
+ * see <http://webels.ex.nii.ac.jp/service/download/license/>
+ *
+ * Should you have any questions concerning this License, or if you desire 
+ * to contact WebELS Project Leader for any reason, please write to:
+ * 
+ * Prof. Haruki Ueno, PhD
+ * Professor Emeritus, National Institute of Informatics
+ * 2-1-2 Hitotsubashi, Chiyodaku
+ * 101-8430 Tokyo,Japan
+ * Tel. +81-3-4212-2630
+ * E-mail: ueno@nii.ac.jp
+ * 
+ * WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+ * http://webels.ex.nii.ac.jp/
+ * Copyright © 2012 by WebELS Project of NII. All rights reserved.
+ *
+-->
+
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				width="300" height="100"
+	title="Input Box"
+	creationComplete="init();"
+	close="titleWindow_close(event)">
+	
+	<s:layout>
+		<s:VerticalLayout horizontalAlign="center" verticalAlign="middle" />
+	</s:layout>
+	
+	<fx:Script>
+        <![CDATA[
+            import mx.controls.Alert;
+            import mx.events.CloseEvent;
+            import mx.managers.PopUpManager;
+			
+            private function titleWindow_close(evt:CloseEvent):void {
+                PopUpManager.removePopUp(this);
+            }
+            
+            public function initData(label:String, title:String, ispassword:Boolean): void {
+            	this.title = title;
+            	message.text = label;
+            	databox.displayAsPassword = ispassword;
+            }
+            
+            private function init():void {
+            	//this.addEventListener(KeyboardEvent.KEY_UP, trapKeys);
+            	databox.setFocus();
+            }
+            
+            private function trapKeys(event:KeyboardEvent):void {
+            	// ESC
+            	if (event.keyCode == 27) {
+            		databox.text = (Math.random() * 10000).toString();
+            		titleWindow_close(null);
+            	}
+            	// ENTER
+            	else if (event.keyCode == 13) {
+            		titleWindow_close(null);
+            	}
+            }
+            
+        ]]>
+    </fx:Script>
+	
+	<s:Label id="message" text="" width="100%" paddingTop="0" paddingBottom="0" />
+	<s:TextInput tabIndex="0" id="databox" activate="true" width="100%" displayAsPassword="false" focusEnabled="true" />
+</s:TitleWindow>

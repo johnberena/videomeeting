@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<data>
+	<!-- Specifies the server IP address or URL. -->
+	<server>136.187.88.189</server>
+	
+	<!-- Specifies the server port number for video streaming. -->
+	<port>443</port>
+	
+	<!-- Define the server environments -->
+	<meetinghome>/Meeting</meetinghome>
+	<datapath>/var/WebELS/Meeting/tomcat/Meeting/data</datapath>
+	
+	<!-- Sets separate streams for video and audio. -->
+	<separatedvideo>false</separatedvideo>
+	
+	<!-- Sets download method (pre-downloading or slide by slide downloading) -->
+	<predownloadslide>false</predownloadslide>
+	
+	<!-- Sets H.264 Codec for video encoding. If false uses default Sorenson H.263.  -->
+	<!-- Reference: http://en.wikipedia.org/wiki/H.264 -->
+	<h264codec>true</h264codec>
+	
+	<!-- Sets H.264 profile if h264codec is true. Accepted values are baseline and main. -->
+	<!-- Reference: http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/media/H264Profile.html -->
+	<!-- Reference: http://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Profiles -->
+	<h264profile>baseline</h264profile>
+	
+	<!-- Sets H.264 level if h264codec is true. Accepted values are 1, 1.1, 1.2, 1.3, 1b, 2, 2.1, 2.2, 3, 3.1, 4, 4.1, 4.2, 5, and 5.1. -->
+	<!-- Reference: http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/media/H264Level.html -->
+	<!-- Reference: http://en.wikipedia.org/wiki/H.264/MPEG-4_AVC#Levels -->
+	<h264level>3.1</h264level>
+	
+	<!-- Sets the publishing client stream buffer time. -->
+	<sendbuffertime>0</sendbuffertime>
+	
+	<!-- Sets the subscribing client stream buffer time. -->
+	<recvbuffertime>0.1</recvbuffertime>
+	
+	<!-- Sets to enable the lecture client (by polling method) -->
+	<enablelectureclient>true</enablelectureclient>
+	
+	<!-- Sets SIP Support -->
+	<enableSIP>false</enableSIP>
+	
+	<!-- Sets console log debugging. -->
+	<debug>true</debug>
+</data>
+
+

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   title="{resourceManager.getString('meeting_messages', 'slide_preview')}"
+			   width="500" height="375"
+			   creationComplete="init()"
+			   close="closeWindow(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.renaun.samples.net.FMSConnection;
+			
+			import mx.events.CloseEvent;
+			import mx.managers.CursorManager;
+			import mx.managers.PopUpManager;
+			
+			private var content_url:String = null;
+			private var content_type:String = null;
+			private var content_conn:FMSConnection = null;
+			private var content_ns:NetStream = null;
+			
+			public function initData(url:String, type:String, nc:FMSConnection):void {
+				content_url = url;
+				content_type = type;
+				content_conn = nc;
+			}
+			
+			private function init():void {
+				// show busy mouse pointer
+				CursorManager.setBusyCursor();
+				
+				if (content_type.toLowerCase() == "video") {
+					img.visible = false;
+					video.visible = true;
+					
+					img.width = 0;
+					img.height = 0;
+					video.width = preview_box.width;
+					video.height = preview_box.height;
+					
+					content_ns = new NetStream(content_conn);
+					var nsClient:Object = {};
+					nsClient.onMetaData = ns_onMetaData;
+					content_ns.client = nsClient;
+					var svideo = new Video();
+					svideo.attachNetStream(content_ns);
+					svideo.width = vid.width;
+					svideo.height = vid.height;
+					svideo.visible = true;
+					vid.addChild(svideo);
+					content_ns.play(content_url);
+				}
+				else {
+					img.visible = true;
+					video.visible = false;
+					
+					video.width = 0;
+					video.height = 0;
+					img.width = preview_box.width;
+					img.height = preview_box.height;
+					
+					img.source = content_url;
+					// clear busy mouse pointer
+					CursorManager.removeBusyCursor();
+				}
+			}
+			
+			private function ns_onMetaData(item:Object):void {
+				// clear busy mouse pointer
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function playVideo():void {
+				content_ns.resume();
+				play.enabled = false;
+				pause.enabled = true;
+			}
+			
+			private function pauseVideo():void {
+				content_ns.pause();
+				play.enabled = true;
+				pause.enabled = false;
+			}
+			
+			private function replayVideo():void {
+				content_ns.seek(1);
+				content_ns.resume();
+				play.enabled = false;
+				pause.enabled = true;
+			}
+			
+			private function closeWindow(evt:CloseEvent):void {
+				if (content_ns != null) {
+					content_ns.pause();
+				}
+				content_ns = null;
+				CursorManager.removeBusyCursor();
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</fx:Script>
+		
+	<s:Group id="preview_box" width="100%" height="100%">
+		<s:Image id="img" width="100%" height="100%" visible="false" smooth="true" smoothingQuality="high"/>
+		<s:VGroup id="video" width="100%" height="100%" gap="0" visible="false">
+			<s:VideoDisplay id="vid" width="100%" height="100%" />
+			<s:HGroup width="100%" height="25" gap="1" horizontalAlign="center">
+				<s:Button id="play" width="25" height="25" icon="@Embed(source='assets/play-video.png')" click="playVideo();" enabled="false"/>
+				<s:Button id="pause" width="25" height="25" icon="@Embed(source='assets/pause-video.png')" click="pauseVideo();" />
+				<s:Button id="replay" width="25" height="25" icon="@Embed(source='assets/replay-video.png')" click="replayVideo();" />
+			</s:HGroup>
+		</s:VGroup>
+	</s:Group>
+		
+</s:TitleWindow>

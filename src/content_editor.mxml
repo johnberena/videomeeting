@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   creationComplete="init()">
+
+
+	<fx:Style source="assets/styles/styles.css" />
+	<fx:Style source="assets/styles/notification_styles.css" />
+	
+	<fx:Script source="lib_editor.as" />
+	<fx:Script>
+		<![CDATA[
+			
+			import spark.events.GridSelectionEvent;
+			import mx.events.FlexEvent;
+			
+			private var previewBox:editor_preview_box = null;
+			
+			private function init():void {
+				
+				mainPanel = editorPanel;
+				add_NewFile.addEventListener(FlexEvent.BUTTON_DOWN, selectFileStart);
+				
+				
+				// set flag for passing the password checker
+				is_edit_action = true;
+				
+				common_init();
+				
+				countInterval = 0;
+				serverAuthInterval = 0;
+				tmpInterval = setInterval(networkConnect, 1000);
+				
+				// get parameters
+				// author mode
+				is_new = (getUrlParamateres("new") == "1") ? true : false;
+				is_edit_mode = (getUrlParamateres("mode") == "edit") ? true : false;
+				// authorname
+				author = (getUrlParamateres("author") == null) ? "youarenotuser" : getUrlParamateres("author");
+				if (author == "admin") {
+					is_admin_permission = true;
+				}
+				// validate key
+				validkey_req = (getUrlParamateres("validkey") == null) ? "" : getUrlParamateres("validkey");
+				if (validkey_req == "" ) {
+					is_validkey_authen = false;
+				}
+				// ignore the valid key
+				is_validkey_authen = true;
+				
+				/*
+				// test
+				if (true) {
+					is_edit_mode = true;
+					is_security_accept = true;
+					is_admin_permission = true;
+				}
+				*/
+			}
+			
+			private function setContentData():void {
+				myDebug("setContentData");
+				
+				// set slide list
+				slideList.dataProvider = contentDesc;
+				// set slide detail 
+				slideDetail.dataProvider = contentDesc;
+				
+				if (contentDesc.length > 0) {
+					slideList.selectedIndex = 0;
+					slideDetail.selectedIndex = 0;
+				}
+			}
+			
+			private function setExecuteButton(): void {
+				myDebug("setExecuteButton");
+				//processbtn.enabled = true;
+				if (!is_edit_mode) {
+					processbtn.label = resourceManager.getString('meeting_messages', 'create_course');
+				}
+				else {
+					processbtn.label = resourceManager.getString('meeting_messages', 'save_course');
+				}
+			}
+			
+			private function confirmExecute(): void {
+				Alert.okLabel = resourceManager.getString('meeting_messages', 'process_label');
+				Alert.buttonWidth = 80;
+				Alert.buttonHeight = 30;
+				Alert.show(resourceManager.getString('meeting_messages', 'process_confirm'),
+					resourceManager.getString('meeting_messages', 'process_title'),
+					Alert.OK|Alert.CANCEL,
+					this, executeHandler);
+				Alert.okLabel = "OK";
+			}
+			
+			private function executeHandler(event:CloseEvent):void {
+				if (event.detail == Alert.OK) {
+					if (CursorManager.currentCursorID == 0) { 
+						CursorManager.setBusyCursor();
+					}
+					
+					if (contentDesc.length > 0) {
+						for (var i:int = 0; i < contentDesc.length; i++) {
+							var page:int = contentDesc.getItemAt(i).page;
+							var title:String = contentDesc.getItemAt(i).title;
+							var image:String = contentDesc.getItemAt(i).image_src;
+							var description:String = contentDesc.getItemAt(i).description;
+							
+							nc.call("setEditorData", null, ((i == 0) ? true : false), page, title, image, description);
+							myDebug("NC.call : setEditorData");
+						}
+					}
+					// when delete all slides
+					else {
+						nc.call("clearEditorData", null, contentID);
+						myDebug("NC.call : clearEditorData");
+					}
+					
+					// create course 
+					nc.call("saveEditorTemplate", null, contentID, true, is_new);
+					myDebug("NC.call : saveEditorTemplate");
+					editorPanel.enabled = false;
+					
+					CursorManager.removeBusyCursor();
+					
+					//Alert.show(resourceManager.getString('at_messages', 'execute_warning'), null, Alert.OK, this, toMainPage);
+					Alert.show("Done.", null, Alert.OK, this, toMainPage);
+				}
+			}
+			
+			private function confirmRemoveFile(): void {
+				Alert.show(resourceManager.getString('meeting_messages', 'alert_delete_current_slide'),
+					resourceManager.getString('meeting_messages', 'alert_system'),
+					Alert.OK|Alert.CANCEL,
+					this, removeFile);
+			}
+			
+			private function removeFile(evt:CloseEvent): void {
+				if (evt.detail == Alert.OK && slideList.selectedIndex != -1) {
+					myDebug("removeFile");
+					var idx:int = slideList.selectedIndex;
+					
+					// remove slide at the server 
+					nc.call("removeSlide", null, contentID, contentDesc.getItemAt(idx).image_src);
+					myDebug("NC.call : removeSlide - " + contentDesc.getItemAt(idx).image_src);
+					
+					contentDesc.removeItemAt(idx);
+					validateSlideNumber();
+					
+					Alert.show(resourceManager.getString('meeting_messages', 'alert_slide_deleted'));
+				}
+			}
+			
+			private function confirmRemoveAllFiles(): void {
+				Alert.show(resourceManager.getString('meeting_messages', 'alert_delete_all_slides'),
+					resourceManager.getString('meeting_messages', 'alert_system'),
+					Alert.OK|Alert.CANCEL,
+					this, removeAllFiles);
+			}
+			
+			private function removeAllFiles(evt:CloseEvent): void {
+				if (evt.detail == Alert.OK && slideList.selectedIndex != -1) {
+					myDebug("removeAllFiles");
+					contentDesc.removeAll();
+					
+					Alert.show(resourceManager.getString('meeting_messages', 'alert_all_slides_deleted'));
+				}
+			}
+			
+			private function onDetailMoveEvent(evt:GridSelectionEvent):void {
+				slideList.selectedIndex = evt.currentTarget.selectedIndex;
+				slideList.validateNow();
+				slideList.scrollToIndex(evt.currentTarget.selectedIndex);
+			}
+			
+			private function onListMoveEvent(evt:Event):void {
+				slideDetail.selectedIndex = evt.currentTarget.selectedIndex;
+				slideDetail.validateNow();
+				slideDetail.ensureCellIsVisible(evt.currentTarget.selectedIndex);
+				slide_position = slideDetail.selectedIndex;
+				myDebug("slide_position : " + slide_position);
+			}
+			
+			private function changeSlideOrder(up:Boolean): void {
+				myDebug("changeSlideOrder");
+				if (slideDetail.selectedIndex != -1) {
+					var idx:int = slideDetail.selectedIndex;
+					var tmp:Object = contentDesc.getItemAt(idx);
+					
+					if (up) {
+						if (idx > 0) {
+							myDebug("move up");
+							contentDesc.removeItemAt(idx);
+							contentDesc.addItemAt(tmp, idx - 1);
+							idx--;
+						}
+					}
+					else {
+						if (idx < (contentDesc.length - 1)) {
+							myDebug("move down");
+							contentDesc.removeItemAt(idx);
+							contentDesc.addItemAt(tmp, idx + 1);
+							idx++;
+						}
+					}
+					validateSlideNumber();
+					
+					slideDetail.selectedIndex = idx;
+					slideDetail.validateNow();
+					slideDetail.ensureCellIsVisible(idx);
+					slideList.selectedIndex = idx;
+					slideList.validateNow();
+					slideList.scrollToIndex(idx);
+				}
+			}
+			
+			private function addEmptySlide(): void {
+				myDebug("addEmptySlide");
+				//if (slideDetail.selectedIndex != -1) {
+				var idx:int = slideDetail.selectedIndex+1;
+				
+				var newPage:Object = addNewPage();
+				contentDesc.addItemAt(newPage, idx);
+				validateSlideNumber();
+				
+				slideDetail.selectedIndex = idx;
+				slideDetail.validateNow();
+				slideDetail.ensureCellIsVisible(idx);
+				slideList.selectedIndex = idx;
+				slideList.validateNow();
+				slideList.scrollToIndex(idx);
+				//}
+			}
+			
+			private function validateSlideNumber(): void {
+				if (contentDesc.length > 0) {
+					for (var i:int = 0; i < contentDesc.length; i++) {
+						contentDesc[i].page = i + 1;
+					}
+				}
+			}
+			
+			private function previewSlide(evt:MouseEvent = null):void {
+				myDebug("previewSlide");
+				
+				previewBox = editor_preview_box(PopUpManager.createPopUp(this, editor_preview_box, true));
+				previewBox.initData(contentDesc.getItemAt(slideDetail.selectedIndex).preview, contentDesc.getItemAt(slideDetail.selectedIndex).type, nc);
+				PopUpManager.centerPopUp(previewBox);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:Panel id="editorPanel" width="800" height="100%" enabled="false" skinClass="skins.webelsPanelSkin">
+		<s:VGroup width="100%" height="100%" horizontalAlign="center" paddingLeft="3" paddingRight="3">
+			<s:HGroup width="100%" height="390" horizontalAlign="center" gap="3">			
+				<s:Panel id="slideListBox" title="{resourceManager.getString('meeting_messages', 'slide_list')}" width="200" height="100%" skinClass="skins.webelsPanelSlimSkin">
+					<mx:TileList id="slideList" 
+								 labelField="label" 
+								 iconField="thumb" 
+								 itemRenderer="slidelist_render" 
+								 columnCount="1" columnWidth="180" 
+								 rowCount="3" 
+								 rowHeight="120" 
+								 direction="horizontal"
+								 wordWrap="true"
+								 verticalScrollPolicy="on"
+								 change="onListMoveEvent(event);"
+								 doubleClick="previewSlide(event);" doubleClickEnabled="true" />
+				</s:Panel>
+				
+				<s:Panel id="slideDetailBox" title="{resourceManager.getString('meeting_messages', 'slide_detail')}" width="580" height="100%" skinClass="skins.webelsPanelSlimSkin">
+				<s:DataGrid id="slideDetail" width="100%" requestedMinRowCount="15" doubleClickEnabled="true" editable="true" sortableColumns="false" 
+								selectionChange="onDetailMoveEvent(event)">
+						<s:columns>
+							<s:ArrayList>
+								<s:GridColumn dataField="icon" width="50" headerText="" editable="false" visible="false" />
+								<s:GridColumn dataField="page" width="50" headerText="{resourceManager.getString('meeting_messages', 'slide_title_page')}" editable="false" />
+								<s:GridColumn dataField="title" width="200" headerText="{resourceManager.getString('meeting_messages', 'slide_title_title')}" editable="true" />
+								<s:GridColumn dataField="description" headerText="{resourceManager.getString('meeting_messages', 'slide_title_desc')}" editable="true" visible="true"/>
+							</s:ArrayList>
+						</s:columns>
+					</s:DataGrid>
+			 	</s:Panel>
+			</s:HGroup>
+			
+			<s:HGroup autoLayout="true" verticalAlign="top" horizontalAlign="left" width="100%">
+				<!-- menu buttons here -->
+				<s:Button id="preview" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'slide_preview')}"
+						  click="previewSlide()"
+						  toolTip="{resourceManager.getString('meeting_messages', 'slide_preview')}"/>
+				<s:Button id="move_up" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'move_up')}"
+						  click="changeSlideOrder(true)"
+						  toolTip="{resourceManager.getString('meeting_messages', 'move_up')}"/>
+				<s:Button id="move_down" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'move_down')}"
+						  click="changeSlideOrder(false)"
+						  toolTip="{resourceManager.getString('meeting_messages', 'move_down')}"/>
+				<s:Button id="add_blank" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'add_empty_slide')}"
+						  click="addEmptySlide()"
+						  toolTip="{resourceManager.getString('meeting_messages', 'add_empty_slide')}"/>
+				<s:Button id="add_NewFile" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'add_new_slide')}"
+						  toolTip="{resourceManager.getString('meeting_messages', 'add_new_slide')}"/>
+				<s:Button id="remove_slide" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'remove_slide')}"
+						  click="confirmRemoveFile()"
+						  toolTip="{resourceManager.getString('meeting_messages', 'remove_slide')}"/>
+				<s:Button id="remove_slides" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'remove_all_slides')}"
+						  click="confirmRemoveAllFiles()"
+						  toolTip="{resourceManager.getString('meeting_messages', 'remove_all_slides')}"/>
+				<s:Button id="processbtn" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'save_course')}"
+						  click="confirmExecute()"
+						  toolTip="{resourceManager.getString('meeting_messages', 'save_course')}"/>
+				<s:Button id="backbtn" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'back_home')}"
+						  click="navigateToURL(new URLRequest(meeting_home + '/'),'_top');"
+						  toolTip="{resourceManager.getString('meeting_messages', 'back_home')}"/>
+			</s:HGroup>
+		</s:VGroup>
+	</s:Panel>
+</s:Application>

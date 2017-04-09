@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+	
+<s:Group  xmlns:fx="http://ns.adobe.com/mxml/2009"
+			xmlns:mx="library://ns.adobe.com/flex/mx"
+			xmlns:s="library://ns.adobe.com/flex/spark"
+			xmlns:Flex="com.lorentz.SVG.Flex.*"
+			xmlns:tlf="net.asciiworks.tlf.*"
+			xmlns:containers="flexlib.containers.*"
+			width="800" height="668" >
+	
+	<fx:Script>
+		<![CDATA[
+			protected function playbackTimeDataTip(value:Number):Object
+			{
+				// TODO Auto Generated method stub
+				var result:String = (value % 60).toString();
+				if (result.length == 1)
+					result = Math.floor(value / 60).toString() + ":0" + result;
+				else 
+					result = Math.floor(value / 60).toString() + ":" + result;
+				return result;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:VGroup id="working_box" width="100%" height="100%" gap="2" paddingBottom="3" paddingLeft="3"
+			  paddingRight="3">
+		
+		<s:HGroup id="chairman_tool" width="100%" height="25" gap="10" verticalAlign="middle">
+			<s:CheckBox id="chairman" 
+						label="{resourceManager.getString('meeting_messages', 'label_chairman')}" 
+						enabled="true" visible="true" 
+						color="{resourceManager.getUint('meeting_messages', 'font_color')}" 
+						skinClass="skins.webelsCheckBoxSkin"
+						toolTip="{resourceManager.getString('meeting_messages', 'tooltip_chairman')}" />
+			<s:Spacer width="100%"/>
+			
+			<s:HGroup id="content_tool" width="100%" height="100%" visible="false" enabled="false" gap="10"
+					  verticalAlign="middle">
+				<s:Label text="{resourceManager.getString('meeting_messages', 'label_sort_by_option')}"/>
+				<s:RadioButton groupName="sort_order" id="sort_date" label="{resourceManager.getString('meeting_messages', 'label_sort_last_modified')}" value="true" selected="true"/>
+				<s:RadioButton groupName="sort_order" id="sort_title" label="{resourceManager.getString('meeting_messages', 'label_sort_title')}"/>
+				<mx:ComboBox id="contents_list_cmb" 
+							 dataProvider="contentsList" 
+							 rowCount="12" width="500" dropdownWidth="500" cornerRadius="0" 
+							 editable="false" labelField="title" enabled="true" 
+							 prompt="{resourceManager.getString('meeting_messages', 'label_select_content_prompt')}"/>
+			</s:HGroup>		
+			<s:Spacer width="100%"/>
+		</s:HGroup>
+		
+		<s:HGroup id="tool_panel" visible="true" width="100%" enabled="false" gap="5">
+			<s:VGroup fontSize="12" gap="0">
+				<s:CheckBox id="presentor_action" 
+							label="{resourceManager.getString('meeting_messages', 'label_presenter')}" 
+							enabled="false" skinClass="skins.webelsCheckBoxSkin" 
+							color="{resourceManager.getUint('meeting_messages', 'font_color')}" 
+							toolTip="{resourceManager.getString('meeting_messages', 'tooltip_presenter')}" />
+				<s:CheckBox id="offline_mode" label="{resourceManager.getString('meeting_messages', 'label_offline')}" 
+							enabled="false" skinClass="skins.webelsCheckBoxSkin" 
+							color="{resourceManager.getUint('meeting_messages', 'font_color')}" 
+							toolTip="{resourceManager.getString('meeting_messages', 'tooltip_offline')}" />
+			</s:VGroup>
+			<s:Spacer width="100%" height="100%"/>
+			<s:HGroup id="contentInfoFullscreen"  visible="false" includeInLayout="{contentInfoFullscreen.visible}">
+				<s:VGroup width="60" height="100%" top="5" >
+					<s:Label fontSize="12" textAlign="left" text="{resourceManager.getString('meeting_messages', 'label_slide')}"
+							 color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+					<mx:Label fontSize="14" textAlign="left" width="100%"
+							  fontWeight="bold" text="{present_page.text + ' / ' + last_page.text}" alpha="0.9" 
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />		
+				</s:VGroup>	
+				<s:Spacer width="100%" height="100%"/>			
+				<s:VGroup height="100%" top="5" >
+					<s:Label fontSize="12" textAlign="left" text="{resourceManager.getString('meeting_messages', 'label_title')}"
+							 color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+					<mx:Label id="contentTitle" fontSize="14" textAlign="left" width="100%"
+							  fontWeight="bold" alpha="0.9" maxWidth="200"
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />		
+				</s:VGroup>				
+			</s:HGroup>
+			<s:Spacer width="100%" height="100%"/>
+			<s:Button id="function_mode_btn" icon="@Embed(source='assets/text-editor-32x32.png')" 
+					  width="32" height="32" skinClass="skins.webelsButtonSkin"/>
+			<s:HGroup id="draw_mode" enabled="false" gap="0">
+				<s:Button id="cursor_btn" width="32" height="32"
+						  icon="@Embed(source='assets/cursorButton.gif')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_cursor')}" />
+				<s:Button id="pen_btn" width="32" height="32" icon="@Embed(source='assets/edit.gif')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_pen')}" />
+			</s:HGroup>
+			<s:HGroup id="draw_tool1" enabled="false" gap="0">
+				<mx:ColorPicker id="pen_color_pkr" width="32" height="32"/>
+				<mx:ComboBox id="pen_size_cmb" width="48" height="32" editable="true"
+							 selectedIndex="1"/>
+				<s:Button id="eraser_btn" width="32" height="32"
+						  icon="@Embed(source='assets/eraser.gif')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_erase')}" />
+				<s:Button id="clear_btn" width="32" height="32"
+						  icon="@Embed(source='assets/eraseAll.gif')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_eraseall')}" />
+				<!--
+				<s:Button id="text_btn" icon="@Embed(source='assets/text.png')" width="36"/>
+				<s:Button id="undo_btn" icon="@Embed(source='assets/refresh.jpg')" enabled="false"/>
+				-->
+			</s:HGroup>
+			<s:Spacer width="100%" height="100%"/>
+			<s:HGroup id="draw_tool2" enabled="false" gap="0">
+			<!--	<s:Button id="expandw_btn" icon="@Embed(source='assets/expandw.png')" width="36" visible="false"/>
+				<s:Button id="expand_btn" icon="@Embed(source='assets/increaseH.png')" width="36" visible="false"/>
+				<s:Button id="depand_btn" icon="@Embed(source='assets/reduceH.png')" width="36" visible="false"/>
+				<s:Button id="depandw_btn" icon="@Embed(source='assets/depandw.png')" width="36" visible="false"/>-->
+				<s:Button id="zoomOut_btn" width="32" height="32" visible="true" includeInLayout="{zoomOut_btn.visible}"
+						  icon="@Embed(source='assets/zoom_out.gif')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_zoom_out')}" />
+				<s:Button id="zoomIn_btn" width="32" height="32" visible="true" includeInLayout="{zoomIn_btn.visible}"
+						  icon="@Embed(source='assets/zoom_in.gif')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_zoom_in')}" />
+				<s:Button id="zoomFit_btn" width="32" height="32" visible="true" includeInLayout="{zoomFit_btn.visible}"
+						  icon="@Embed(source='assets/zoom_fit.gif')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_fit_all')}" />
+				<s:Button id="zoomA4_btn" width="32" height="32" visible="true" includeInLayout="{zoomA4_btn.visible}"
+						  icon="@Embed(source='assets/zoom_A4.gif')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_fit_width')}" />
+				<s:Button id="dragging" width="32" height="32" enabled="false" visible="true" includeInLayout="{dragging.visible}"
+						  icon="@Embed(source='assets/move.png')" skinClass="skins.webelsButtonSkin" 
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_drag')}" />
+				<s:Button id="hidelist_btn" width="32" height="32" visible="false" includeInLayout="{hidelist_btn.visible}"
+						  icon="@Embed(source='assets/view-list-32x32.png')" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_hidelist')}" />
+			</s:HGroup>
+			<s:Spacer width="100%" height="100%"/>
+			<s:HGroup id="upload_tool" enabled="false" gap="0">
+				<s:Button id="add_slide" width="32" height="32" enabled="true"
+						  icon="@Embed(source='assets/add-slide-32.png')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_add_blank_slide')}" />
+				<s:Button id="file_upload" width="32" height="32" enabled="true"
+						  icon="@Embed(source='assets/upload-slide-32.png')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_add_new_file')}" />
+				<s:Button id="remove_slide" width="32" height="32" enabled="true"
+						  icon="@Embed(source='assets/delete-slide-32.png')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_remove_slide')}" />
+				<s:Button id="remove_slides" width="32" height="32" enabled="true"
+						  icon="@Embed(source='assets/delete-all-slides-32.png')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_remove_all_slides')}" />
+				<s:Button id="restore_original_content" width="32" height="32" enabled="true"
+						  icon="@Embed(source='assets/restore-original-content-32.png')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_restore_original_content')}" />
+				<s:Button id="restore_modified_content" width="32" height="32" enabled="true"
+						  icon="@Embed(source='assets/restore-modified-content-32.png')"
+						  skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_restore_modified_content')}" />
+			</s:HGroup>
+			<s:Spacer width="10" height="100%"/>
+			<s:Button id="exit_full_screen" width="32" height="32" enabled="true" visible="false"
+					  icon="@Embed(source='assets/layout-fs.png')" skinClass="skins.webelsButtonSkin"
+					  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_full_screen_off')}"/>
+		</s:HGroup>
+		
+		<s:HGroup width="100%" height="100%">
+			<s:Scroller id="wb_viewport" width="100%" height="100%" verticalScrollPolicy="auto" horizontalScrollPolicy="auto"
+						visible="true" includeInLayout="{wb_viewport.visible}">
+				<s:VGroup id="wb_content_group" width="100%" height="100%" gap="0">
+					<s:BorderContainer id="wb_container" width="100%" height="100%" backgroundColor="0xF2F2F2">
+						<Flex:SVG id="svg" width="100%" height="100%" visible="false"/>
+						<s:Image id="slideimg" width="100%" height="100%" scaleMode="letterbox" fillMode="scale" visible="false" smooth="true" smoothingQuality="high"/>
+						<s:VideoDisplay id="video" width="100%" height="100%" autoDisplayFirstFrame="true" volume="1.0"/>				
+						<s:Group id="wb_area" width="100%" height="100%"/>
+						<mx:Image x="0" y="0" source="assets/cursor.png" id="cursorImg" visible="true"/>
+					</s:BorderContainer>
+					<s:HGroup id="video_control" width="100%" height="0" visible="false">
+						<mx:Spacer width="100%"/>
+						<s:Group id="video_control_container">
+							<s:Rect x="0" y="4" 
+									radiusX="0" radiusY="0" 
+									height="28" width="100%">
+								<s:stroke>
+									<s:LinearGradientStroke weight="1" scaleMode="normal"/>
+								</s:stroke>
+								<s:fill>
+									<s:LinearGradient>
+										<s:entries>
+											<mx:GradientEntry color="0x999999"/>
+										</s:entries>
+									</s:LinearGradient>
+								</s:fill>
+							</s:Rect>
+							<s:Button id="play" width="24" height="24" visible="false"
+									  icon="@Embed(source='assets/play-video-24x24.png')" 
+									  left="10" top="6"/>
+							<s:Button id="replay" width="24" height="24" visible="false" 
+									  icon="@Embed(source='assets/replay-video-24x24.png')" 
+									  left="10" top="6"/>
+							<mx:ProgressBar id="downloadProgressBar" 
+											width="500" trackHeight="20" left="44" top="8"
+											mode="manual" label="" alpha="0.8" 
+											doubleClickEnabled="false"/>
+							<mx:ProgressBar id="playbackProgressBar" 
+											width="500" trackHeight="20" left="44" top="8"
+											alpha="0.5" label="" 
+											mode="manual"
+											doubleClickEnabled="false" /> 
+							<s:HSlider id="videoScrubber" visible="true" left="44" top="8"
+									   width="500" height="20" minimum="0" snapInterval="1" 
+									   showDataTip="true" dataTipFormatFunction="playbackTimeDataTip"
+									   liveDragging="true" skinClass="skins.webelsHSliderSkin"  />	
+							<s:Button id="wb_speaker" width="24" height="24" 
+									  icon="@Embed(source='assets/wb-speaker-on-24x24.png')" 
+									  left="554" top="6"/>
+							<s:Label id="video_running_time" 
+										 width="100%" 
+										 textAlign="left" 
+										 text="00:00" fontSize="12" fontWeight="bold" 
+										 color="0x0A0A0A"
+										 visible="true"
+										 left="595" top="12" right="20"/>
+							<s:Label id="video_time_duration" 
+										 width="100%" 
+										 textAlign="right" 
+										 text="/ 00:00" fontSize="12" fontWeight="bold" 
+										 color="0x333333"
+										 visible="true"
+										 left="628" top="12" right="10"/>
+						</s:Group>
+						<mx:Spacer width="100%"/>
+					</s:HGroup>
+				</s:VGroup>
+				
+			</s:Scroller>
+			<s:Scroller id="text_editor_viewport" width="100%" height="100%" visible="false" includeInLayout="{text_editor_viewport.visible}">
+				<s:Group id="text_editor">
+					<s:Rect x="0" y="0" height="100%" width="100%">
+						<s:stroke>
+							<s:LinearGradientStroke weight="1" scaleMode="normal"/>
+						</s:stroke>
+					</s:Rect> 
+					<tlf:TLFTextEditor id="editor" width="100%" height="100%" left="2" top="2" right="2" bottom="2"
+								   availableTextColors="{[0xFFFFFF,0xFFFF00,0xFF6600,0xFF0000,0xFF00FF,0x00FFFF,0x00FF00,0x0000FF,0x999999,0xCCCCCC,0x999900,0x990099,0x990000,0x009900,0x000099,0x000000]}" fontStyle="normal"
+								   initialTextColor="0x000000" lineHeight="140%" fontWeight="normal" 
+								   automaticallyExpand="false" textIndent="10"
+								   textAreaBackgroundColor="0xF9F9F9" />
+				</s:Group>
+			</s:Scroller>
+			<s:Panel id="slide_list_box" visible="false" width="150" height="100%" enabled="false" includeInLayout="{slide_list_box.visible}" 
+					 title="{resourceManager.getString('meeting_messages', 'slide_list')}" skinClass="skins.webelsPanelSlimSkin">
+				<mx:TileList id="slide_list" height="100%" 
+							labelField="label" 
+							iconField="thumb" 
+							itemRenderer="slidelist_render" 
+							columnCount="1" columnWidth="128" 
+							rowCount="4" 
+							rowHeight="128" 
+							direction="horizontal"
+							wordWrap="true"
+							verticalScrollPolicy="on"/>
+			</s:Panel>
+			
+			<s:VGroup id="page_tool2" width="32" height="100%" verticalAlign="middle" gap="0" enabled="false" visible="false" includeInLayout="{page_tool2.visible}">
+				<s:Button id="first_page2" visible="true" width="32" height="32" label="|&lt;" cornerRadius="0"
+						  toolTip="Go to the First Slide"
+						  icon="@Embed(source='assets/slide-first-32x32.png')" 
+						  skinClass="skins.sparkButtonSkin"/>	
+				<s:Button id="previous_page2" visible="true" width="32" height="32" label="&lt;" cornerRadius="0"
+						  toolTip="Previous Slide"
+						  icon="@Embed(source='assets/slide-previous-32x32.png')" 
+						  skinClass="skins.sparkButtonSkin"/>
+				<s:Button id="next_page2" visible="true" width="32" height="32" label="&gt;" cornerRadius="0"
+						  toolTip="Next Slide"
+						  icon="@Embed(source='assets/slide-next-32x32.png')" 
+						  skinClass="skins.sparkButtonSkin"/>
+				<s:Button id="end_page2" visible="true" width="32" height="32" label="&gt;|" cornerRadius="0"
+						  toolTip="Go to the Last Slide"
+						  icon="@Embed(source='assets/slide-last-32x32.png')" 
+						  skinClass="skins.sparkButtonSkin"/>
+			</s:VGroup>
+		</s:HGroup>
+		
+		<s:HGroup id="page_tool" width="100%" height="80" enabled="false" horizontalAlign="center" visible="true" includeInLayout="{page_tool.visible}">
+			<s:Button id="first_page" visible="true" width="32" height="100%" label="|&lt;" cornerRadius="0"
+					  toolTip="Go to the First Slide"
+					  icon="@Embed(source='assets/slide-first-32x32.png')" 
+					  skinClass="skins.sparkButtonSkin"/>	
+			<s:Button id="previous_page" visible="true" width="32" height="100%" label="&lt;" cornerRadius="0"
+					  toolTip="Previous Slide"
+					  icon="@Embed(source='assets/slide-previous-32x32.png')" 
+					  skinClass="skins.sparkButtonSkin"/>
+			<mx:TileList id="thumbnail_list"
+				labelField="label" 
+				iconField="thumb" 
+				itemRenderer="thumbnail_render" 
+				columnCount="6" 
+				columnWidth="84" 
+				rowCount="1" 
+				rowHeight="64" 
+				direction="vertical"
+				wordWrap="true"
+				horizontalScrollPolicy="on"
+				verticalScrollPolicy="off"
+				paddingLeft="0" paddingRight="0"/>
+			<s:Button id="next_page" visible="true" width="32" height="100%" label="&gt;" cornerRadius="0"
+						  toolTip="Next Slide"
+						  icon="@Embed(source='assets/slide-next-32x32.png')" 
+						  skinClass="skins.sparkButtonSkin"/>
+			<s:Button id="end_page" visible="true" width="32" height="100%" label="&gt;|" cornerRadius="0"
+						  toolTip="Go to the Last Slide"
+						  icon="@Embed(source='assets/slide-last-32x32.png')" 
+						  skinClass="skins.sparkButtonSkin"/>
+			<s:VGroup width="40">
+					<s:Label id="slide" fontSize="10" text="{resourceManager.getString('meeting_messages', 'label_slide')}"
+							 color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+					<mx:Label id="present_page" width="40" height="20" fontSize="16"
+							  fontWeight="bold" text="0" textAlign="center" alpha="0.9" 
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+					<s:Line xFrom="0" yFrom="20" xTo="36" yTo="20">
+						<s:stroke>
+							<s:SolidColorStroke color="{resourceManager.getUint('meeting_messages', 'font_color')}" alpha="0.9" weight="2"/>
+						</s:stroke>
+					</s:Line>						
+					<mx:Label id="last_page" width="40" height="20" fontSize="16"
+							  fontWeight="bold" text="0" textAlign="center" alpha="0.9" 
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+			</s:VGroup>
+		</s:HGroup>
+
+	</s:VGroup>
+</s:Group>

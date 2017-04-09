@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="200" height="150"
+			   close="closeWindow(event)"
+			   creationComplete="init()"
+			   skinClass="skins.webelsTitleWindowSkin"
+			   title="{resourceManager.getString('meeting_messages', 'label_presenter')}">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.renaun.samples.net.FMSConnection;
+			
+			import mx.events.CloseEvent;
+			import mx.events.ResizeEvent;
+			import mx.managers.PopUpManager;
+			
+			private var video_ns:NetStream = null;
+			
+			public function initData(ns:NetStream):void {
+				video_ns = ns;
+			}
+			
+			private function init():void {
+				var stream_data:Video = new Video();
+				stream_data.width = presenterVideo.width;
+				stream_data.height = presenterVideo.height;
+				presenterVideo.addChild(stream_data);
+				
+				stream_data.attachNetStream(video_ns);
+			}
+			
+			public function closeWindow(evt:CloseEvent = null):void {
+				video_ns = null;
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:VideoDisplay id="presenterVideo" width="100%" height="100%" />
+</s:TitleWindow>

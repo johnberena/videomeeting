@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="100%" height="100%"
+			   minWidth="720" minHeight="480"
+			   close="closeWindow(event)"
+			   creationComplete="init()" 
+			   title="{resourceManager.getString('meeting_messages', 'label_admin_panel')}">
+	<fx:Script>
+		<![CDATA[		
+			import mx.collections.ArrayCollection;
+			import mx.events.CloseEvent;
+			import mx.events.ResizeEvent;
+			import mx.events.ListEvent;
+			import mx.core.EventPriority;
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			private var dpUsers:ArrayCollection = new ArrayCollection;
+			
+			[Embed(source="assets/kickout-24x24.png")]
+			[Bindable] private var icon_kickout_on:Class;
+			[Embed(source="assets/kickout-DIS-24x24.png")]
+			[Bindable] private var icon_kickout_off:Class;
+			[Embed(source="assets/microphone-MUTE-24x24.png")]
+			[Bindable] private var icon_mute_mic_on:Class;
+			[Embed(source="assets/microphone-MUTE-DIS-24x24.png")]
+			[Bindable] private var icon_mute_mic_off:Class;
+			[Embed(source="assets/microphone-MUTEALL-24x24.png")]
+			[Bindable] private var icon_muteall_mic_on:Class;
+			[Embed(source="assets/microphone-MUTEALL-DIS-24x24.png")]
+			[Bindable] private var icon_muteall_mic_off:Class;
+			[Embed(source="assets/webcamera-BLOCK-24x24.png")]
+			[Bindable] private var icon_block_cam_on:Class;
+			[Embed(source="assets/webcamera-BLOCK-DIS-24x24.png")]
+			[Bindable] private var icon_block_cam_off:Class;
+			[Embed(source="assets/webcamera-BLOCKALL-24x24.png")]
+			[Bindable] private var icon_blockall_cam_on:Class;
+			[Embed(source="assets/webcamera-BLOCKALL-DIS-24x24.png")]
+			[Bindable] private var icon_blockall_cam_off:Class;
+			[Embed(source = 'assets/mainvideo-24x24.png')]
+			[Bindable] private var icon_main_video:Class;
+		
+			public function initData(dataUsers:ArrayCollection):void {
+				myDebug("receive data");
+				dpUsers = dataUsers;
+			}
+			
+			private function init():void {
+				myDebug("init");
+			}
+			
+			public function updateData(dataUsers:ArrayCollection):void {
+				myDebug("updateData");
+				dpUsers = dataUsers;
+			}
+			
+			public function closeWindow(evt:CloseEvent):void {
+				myDebug("closeWindow");
+				PopUpManager.removePopUp(this);
+			}
+				
+			// debugging
+			private function myDebug(debugMsg:String):void {
+				if (true) {
+					ExternalInterface.call("console.log", "--adminPanelDEBUG-- " + debugMsg);
+				}
+			}
+		]]>
+	</fx:Script>
+			<s:HGroup width="100%" height="100%" paddingTop="2" paddingLeft="2" paddingRight="2" paddingBottom="2">
+				<mx:DataGrid id="adminUsersList" width="100%" height="100%" borderColor="#a9a9a9"
+							 borderStyle="solid"  
+							 dataProvider="{ dpUsers }" doubleClickEnabled="true"
+							 paddingBottom="0" paddingLeft="0" paddingRight="0"
+							 paddingTop="0" sortableColumns="false" 
+							 color="{resourceManager.getUint('meeting_messages', 'font_color')}">
+					<mx:columns>					
+						<mx:DataGridColumn headerText="{resourceManager.getString('meeting_messages', 'label_name')}" dataField="uname" />
+						<mx:DataGridColumn headerText="{resourceManager.getString('meeting_messages', 'label_user_class')}" dataField="userclass"/>
+						<mx:DataGridColumn headerText="{resourceManager.getString('meeting_messages', 'label_login_time')}" dataField="logintime"/>
+						<mx:DataGridColumn headerText="{resourceManager.getString('meeting_messages', 'label_status')}" dataField="status"/>
+					</mx:columns>			
+				</mx:DataGrid>
+				<s:VGroup id="adminControlGroup2" width="190" height="100%" horizontalAlign="center">
+					<s:Spacer height="10"/>
+					<s:Button id="mainvideo2" visible="false" width="180" height="28" 
+							  click="dispatchEvent(new Event('callSetMainvideo'));"
+							  includeInLayout="{mainvideo2.visible}" 
+							  icon="{icon_main_video}"
+							  label="{resourceManager.getString('meeting_messages', 'label_set_main_video')}"
+							  skinClass="skins.webelsButtonIconLabelSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_set_mainvideo')}"/>
+					<s:Button id="camBlockUser2" visible="true" width="180" height="28" 
+							  click="dispatchEvent(new Event('callBlockUserCam'));"
+							  includeInLayout="{camBlockUser2.visible}" 
+							  icon="{icon_block_cam_on}" 
+							  label="{resourceManager.getString('meeting_messages', 'label_block_unblock_camera')}"
+							  skinClass="skins.webelsButtonIconLabelSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_block_cam')}"/>
+					<s:Button id="camBlockAllUser2" visible="true" width="180" height="28" 
+							  click="dispatchEvent(new Event('callBlockAllUserCam'));"
+							  includeInLayout="{camBlockAllUser2.visible}" 
+							  icon="{icon_blockall_cam_on}"
+							  label="{resourceManager.getString('meeting_messages', 'label_block_all_camera')}"
+							  skinClass="skins.webelsButtonIconLabelSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_blockall_cam')}"/>
+					<s:Button id="micMuteUser2" visible="true" width="180" height="28" 
+							  click="dispatchEvent(new Event('callMuteUser'));"
+							  includeInLayout="{micMuteUser2.visible}" 
+							  icon="{icon_mute_mic_on}"
+							  label="{resourceManager.getString('meeting_messages', 'label_mute_unmute')}"
+							  skinClass="skins.webelsButtonIconLabelSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_mute_mic')}"/>
+					<s:Button id="micMuteAllUser2" visible="true" width="180" height="28" 
+							  click="dispatchEvent(new Event('callMuteAllUser'));"
+							  includeInLayout="{micMuteAllUser2.visible}" 
+							  icon="{icon_muteall_mic_on}"
+							  label="{resourceManager.getString('meeting_messages', 'label_mute_all')}"
+							  skinClass="skins.webelsButtonIconLabelSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_muteall_mic')}"/>
+					<s:Button id="kickout2" visible="false" width="180" height="28"
+							  click="dispatchEvent(new Event('callKickUser'));" 
+							  includeInLayout="{kickout2.visible}" 
+							  icon="{icon_kickout_on}"
+							  label="{resourceManager.getString('meeting_messages', 'label_kickout_user')}"
+							  skinClass="skins.webelsButtonIconLabelSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_kickout')}"/>
+					<s:Button id="invite_SIP_H323" visible="false" width="180" height="28" 
+							  click="dispatchEvent(new Event('callInviteExternalUser'));"
+							  includeInLayout="{invite_SIP_H323.visible}" 
+							  label="{resourceManager.getString('meeting_messages', 'label_invite_sip_user')}"
+							  skinClass="skins.webelsButtonSkin"
+							  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_invite_external_user')}"/>
+					<!--	<s:CheckBox id="sharedDisplay2" 
+					label="{resourceManager.getString('meeting_messages', 'label_shared_display')}" 
+					change="sharedDisplay_change(event)" skinClass="skins.webelsCheckBoxSkin"
+					color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+					toolTip="{resourceManager.getString('meeting_messages', 'tooltip_shared_video')}" />
+					-->	
+				</s:VGroup>
+			</s:HGroup>	
+</s:TitleWindow>

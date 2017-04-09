@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:Flex="com.lorentz.SVG.Flex.*"
+			   width="100%" height="100%"
+			   minWidth="640" minHeight="480"
+			   resize="updateHeights(event)"
+			   applicationComplete="init(event)" >
+	
+	<fx:Style source="assets/styles/styles.css" />
+	<fx:Style source="assets/styles/notification_styles.css" />
+	<fx:Script source="lib_lecture.as" />
+	<fx:Script>
+		<![CDATA[
+			
+			private static var AUTO_RESIZE_APP:Boolean = false;
+			private var global_app_width:int = 100;
+			private var global_app_height:int = 100;
+			private var ready:Boolean = false;
+				
+			private function init(event:Event):void{
+				// enable / disable resize event
+				AUTO_RESIZE_APP = true;
+				
+				global_app_width = 1100; //920
+				global_app_height = 668;//720
+				mainPanel = lecturePanel;
+				common_init();
+				
+				ExternalInterface.addCallback("lecture_client", cleanUp);//Detect Browser
+				
+				// ENTER key for sending chat message - 20121203 //
+				if(txtMsg != null) {
+					txtMsg.addEventListener(FlexEvent.ENTER, txtMsgEnterHandler);
+				}
+				
+				/* Set up full screen handler. */
+				systemManager.stage.addEventListener(FullScreenEvent.FULL_SCREEN, fullScreenHandler);
+				
+				
+				//presenterWindow.closeButton.visible = false;
+				//updateHeights(event);
+				changePanelScale();
+				
+			}
+			
+			// ENTER key for sending chat message - 20121203 //
+			protected function txtMsgEnterHandler(event:FlexEvent):void{
+				sendMessage(txtMsg.text);
+				txtMsg.setFocus();
+			}
+			
+			// full screen handler
+			private function fullScreenHandler(evt:FullScreenEvent):void {
+				if (this.systemManager.stage.displayState == StageDisplayState.FULL_SCREEN_INTERACTIVE) {
+					userLoginArea.height = 0;
+					userLoginArea.visible = false;
+				//	btnLecturerVideo.visible = true;
+				}
+				else {
+					userLoginArea.height = 30;
+					userLoginArea.visible = true;
+				//	btnLecturerVideo.visible = false;
+				}
+				lecturePanel.validateNow();
+				changePanelScale();
+			}
+			
+			// toggle a display mode   // moved to skin - webelsLecturePanelSkin.mxml
+			private function toggleFullScreen(evt:Event = null):void {
+				try {
+					switch (this.systemManager.stage.displayState) {
+						case StageDisplayState.FULL_SCREEN_INTERACTIVE:
+							/* If already in full screen mode, switch to normal mode. */
+							lecturePanel.height = 668;
+							lecturePanel.width = 1100;
+							this.systemManager.stage.displayState = StageDisplayState.NORMAL;
+							break;
+						default:
+							/* If not in full screen mode, switch to full screen mode. */
+							lecturePanel.percentHeight = 100;
+							lecturePanel.percentWidth = 100;
+							this.systemManager.stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+							break;
+					}
+				} catch (err:SecurityError) {
+					myDebug("Full-screen Error");
+				}
+			}
+			
+			// ENTER KEY LOGIN - 20121203 //
+			protected function txtUserEnterHandler(event:FlexEvent):void {
+				loginManagement();
+			}
+			
+			/*** http://flexdevtips.blogspot.jp/2010/08/detecting-browser-height.html ***/
+			protected function updateHeights(event:ResizeEvent):void {
+			//	myDebug("updateHeights");
+				if (event.type == ResizeEvent.RESIZE) {
+					ready = true;
+				}
+				if (!ready) {
+					return;
+				}
+			//	myDebug("do updateHeights");
+				changePanelScale();
+			}
+			
+			// calculate the panel scale
+			private function changePanelScale():void {
+				myDebug("changePanelScale");
+				/* more information from
+				http://flexdevtips.blogspot.jp/2010/08/detecting-browser-height.html
+				*/
+				if (!AUTO_RESIZE_APP) {
+					return;
+				}
+				
+				if (this.systemManager.stage.displayState == StageDisplayState.FULL_SCREEN_INTERACTIVE) {
+					return;
+				}
+				
+				
+				var browser_width:Number = ExternalInterface.call("eval", "window.innerWidth");
+				var browser_height:Number = ExternalInterface.call("eval", "window.innerHeight");
+				//var browserHeight:Number = ExternalInterface.call("eval", "document.documentElement.clientHeight");
+				//var browserHeight:Number = ExternalInterface.call("eval", "document.getElementsByTagName('body')[0].clientHeight");
+				
+				//myDebug(global_app_width + "," + global_app_height + " -- " + browser_width + "," + browser_height);
+				var scaleX:Number = browser_width / global_app_width;
+				var scaleY:Number = browser_height / global_app_height;
+				//myDebug("scaleX = " + scaleX + ", scaleY = " + scaleY);
+				
+				// keep the ratio
+				if (scaleX <= scaleY) {
+					lecturePanel.scaleX = scaleX;
+					lecturePanel.scaleY = scaleX;
+				}
+				else {
+					lecturePanel.scaleX = scaleY;
+					lecturePanel.scaleY = scaleY;
+				}
+			}
+			
+			private function sendMessage(msg:String):void {
+				if (msg != null && StringUtil.trim(msg) != "") {
+					so_lecture.send("newMessage", loging_name, msg, cmpColorPicker.selectedColor.toString(16), clientID);
+					myDebug("SO.send : newMessage");
+					// save message transaction
+					nc.call('saveMessage', null, loging_name, msg, cmpColorPicker.selectedColor.toString(16));
+					myDebug("NC.call : saveMessage");		
+					txtMsg.setFocus();
+					txtMsg.text = "";
+				}
+			}
+			
+			public function newMessage(user:String, msg:String, color:String, senderID:Number):void {
+				myDebug("SO : newMessage");
+				txtChatBox.htmlText += "<font color=\"#" + color + "\"><b>" + user + ":</b> " +  msg + "</b></font>\n";
+				txtChatBox.validateNow(); //To scroll down
+				txtChatBox.verticalScrollPosition = txtChatBox.maxVerticalScrollPosition; //To scroll down
+			}
+			
+			protected function playbackTimeDataTip(value:Number):Object {
+				// TODO Auto Generated method stub
+				var result:String = (value % 60).toString();
+				if (result.length == 1)
+					result = Math.floor(value / 60).toString() + ":0" + result;
+				else 
+					result = Math.floor(value / 60).toString() + ":" + result;
+				return result;
+			}	
+			
+		]]>
+	</fx:Script>
+	
+	<s:Panel id="lecturePanel" width="1100" height="668" minWidth="640" minHeight="480"
+			 enabled="false" skinClass="skins.webelsLecturePanelSkin">
+		<s:VGroup width="100%" height="100%" gap="2">
+			<s:HGroup id="userLoginArea" width="100%" height="30" paddingTop="2" horizontalAlign="left">
+				<s:Spacer width="5"/>
+				<s:HGroup id="loginArea" width="180" paddingLeft="2" paddingRight="2" verticalAlign="middle">
+					<s:Label text="{resourceManager.getString('meeting_messages', 'label_login_name')}" id="label_name" color="#000000"/>
+					<s:TextInput id="txtUser" enabled="true" width="140" prompt="{resourceManager.getString('meeting_messages', 'label_login_name_prompt')}"/>
+				</s:HGroup>
+				<s:Button id="btnLogin" width="80"
+						  label="{resourceManager.getString('meeting_messages', 'login')}"
+						  click="loginManagement()" color="#000000"/>
+				<s:Label id="infoText" fontSize="12" height="100%" verticalAlign="middle" paddingLeft="10" 
+						 fontWeight="bold" color="0xCC0000"/>
+				<s:Spacer width="100%"/>
+				<s:HGroup width="140" height="100%" verticalAlign="middle" >
+					<s:Label fontSize="12" text="{resourceManager.getString('meeting_messages', 'label_slide')}"
+							 color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+					<s:Label id="present_page" fontSize="12" textAlign="right" width="20"
+							  fontWeight="normal" text="0" alpha="0.9" 
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />	
+					<s:Label fontSize="12" textAlign="center" width="5"
+							  fontWeight="normal" text="/" alpha="0.9" 
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+					<s:Label id="last_page" fontSize="12" textAlign="left" width="20"
+							  fontWeight="normal" text="0" alpha="0.9" 
+							  color="{resourceManager.getUint('meeting_messages', 'font_color')}" />
+				</s:HGroup>
+				<s:Spacer width="5"/>
+			</s:HGroup>
+			<s:HGroup width="100%" height="100%">
+			<!--	<s:VGroup id="controlArea" width="26" height="100%">
+					<s:Button id="btnFullscreen" width="26" visible="false"
+							  icon="{icon_layout_fs_switch}"
+							  click="toggleFullScreen()"
+							  toolTip="{resourceManager.getString('meeting_messages', 'label_full_screen_on')}"
+							  skinClass="skins.webelsButtonSkin"/>
+					<s:Button id="btnLecturerVideo" width="26" visible="false"
+							  icon="{icon_main_video}"
+							  click="floatLectureVideo()"
+							  skinClass="skins.webelsButtonSkin"/>
+				</s:VGroup>
+			-->	<s:Spacer width="5"/>
+				<s:VGroup width="266" height="100%" gap="0">
+					<s:TitleWindow id="lectureVideoContainer" 
+								   width="266" 
+								   height="{lectureVideoContainer.width * (3 / 4)}" 
+								   borderColor="0x9C9C9C" 
+								   skinClass="skins.webelsLectureTitleWindowSkin"
+								   enabled="false">
+						<s:VideoDisplay id="lectureVideo" visible="true" scaleMode="stretch"
+								width="100%" height="100%">
+						</s:VideoDisplay>
+					</s:TitleWindow>
+					<s:Spacer height="10"/>
+					<s:VGroup id="chatArea" width="266" height="100%" paddingBottom="2" enabled="false">
+						<s:HGroup width="100%" height="25" paddingLeft="0" paddingRight="0" gap="2">
+							<mx:ColorPicker id="cmpColorPicker" showTextField="false" selectedColor="0x000000"/>
+							<s:TextInput id="txtMsg" width="100%" enter="{sendMessage(txtMsg.text)}"
+										 prompt="{resourceManager.getString('meeting_messages', 'label_message_prompt')}"/>
+							<s:Button id="btnMessage" width="50"
+									  label="{resourceManager.getString('meeting_messages', 'label_message')}"
+									  click="sendMessage( txtMsg.text )"
+									  color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+									  skinClass="skins.sparkButtonSkin"/>
+						</s:HGroup>
+						<mx:TextArea id="txtChatBox" width="100%" height="100%" borderColor="0x9C9C9C"
+									 color="#000000" editable="false" paddingLeft="2"
+									 paddingRight="2" styleName="chatBox"
+									 verticalScrollPolicy="auto"/>
+					</s:VGroup>
+					<s:Spacer height="3"/>
+				</s:VGroup>
+				<s:VGroup width="100%" height="100%" gap="0">
+					<s:BorderContainer width="100%" height="100%" borderVisible="false">
+						<s:HGroup id="contentArea" width="100%" height="100%" verticalAlign="middle" paddingBottom="10" enabled="false">
+							<s:Scroller id="contentViewport" width="100%" height="100%" verticalScrollPolicy="auto" horizontalScrollPolicy="auto">
+								<s:VGroup id="viewportGroup" width="100%" height="100%" gap="0">
+									<s:BorderContainer id="viewportContainer" width="100%" height="100%" borderWeight="1" backgroundColor="0xF2F2F2">
+										<Flex:SVG id="slidesvg" width="100%" height="100%" visible="false"/>
+										<s:Image id="slideimg" width="100%" height="100%" visible="false" smooth="true" smoothingQuality="high"/>
+										<s:VideoDisplay id="slidevid" width="100%" height="100%" visible="false" autoDisplayFirstFrame="true" volume="1.0" autoPlay="false"/>
+										<s:Group id="drawgroup" width="100%" height="100%"/>
+										<s:Image id="cursorimg" x="0" y="0" source="assets/cursor.png" visible="false"/>
+									</s:BorderContainer>
+								</s:VGroup>
+							</s:Scroller>
+						</s:HGroup>
+					</s:BorderContainer>
+					<s:HGroup id="video_control" width="100%" height="0" visible="false" includeInLayout="{video_control.visible}">
+						<mx:Spacer width="100%"/>
+						<s:Group id="video_control_container">
+							<s:Rect x="0" y="4" 
+									radiusX="0" radiusY="0" 
+									height="28" width="100%">
+								<s:stroke>
+									<s:LinearGradientStroke weight="1" scaleMode="normal"/>
+								</s:stroke>
+								<s:fill>
+									<s:LinearGradient>
+										<s:entries>
+											<mx:GradientEntry color="0x999999"/>
+										</s:entries>
+									</s:LinearGradient>
+								</s:fill>
+							</s:Rect>
+							<s:Button id="play" width="24" height="24" visible="false"
+									  icon="@Embed(source='assets/play-video-24x24.png')" 
+									  left="10" top="6"/>
+							<s:Button id="replay" width="24" height="24" visible="false" 
+									  icon="@Embed(source='assets/replay-video-24x24.png')" 
+									  left="10" top="6"/>
+							<mx:ProgressBar id="downloadProgressBar" 
+											width="500" trackHeight="20" left="44" top="8"
+											mode="manual" label="" alpha="0.8" 
+											doubleClickEnabled="false"/>
+							<mx:ProgressBar id="playbackProgressBar" 
+											width="500" trackHeight="20" left="44" top="8"
+											alpha="0.5" label="" 
+											mode="manual"
+											doubleClickEnabled="false" /> 
+							<s:HSlider id="videoScrubber" visible="true" left="44" top="8"
+									   width="500" height="20" minimum="0" snapInterval="1" 
+									   showDataTip="true" dataTipFormatFunction="playbackTimeDataTip"
+									   liveDragging="true" skinClass="skins.webelsHSliderSkin"  />	
+							<s:Button id="wb_speaker" width="24" height="24" 
+									  icon="@Embed(source='assets/wb-speaker-on-24x24.png')" 
+									  left="554" top="6"/>
+							<s:Label id="video_running_time" 
+									 width="100%" 
+									 textAlign="left" 
+									 text="00:00" fontSize="12" fontWeight="bold" 
+									 color="0x0A0A0A"
+									 visible="true"
+									 left="595" top="12" right="20"/>
+							<s:Label id="video_time_duration" 
+									 width="100%" 
+									 textAlign="right" 
+									 text="/ 00:00" fontSize="12" fontWeight="bold" 
+									 color="0x333333"
+									 visible="true"
+									 left="628" top="12" right="10"/>
+						</s:Group>
+						<mx:Spacer width="100%"/>
+					</s:HGroup>
+					<mx:TileList id="thumbnail_list" 
+								 labelField="label" 
+								 iconField="thumb" 
+								 itemRenderer="thumbnail_render" 
+								 rowCount="1" 
+								 rowHeight="60" 
+								 width="100%"
+								 direction="vertical"
+								 wordWrap="true"
+								 horizontalScrollPolicy="on"
+								 verticalScrollPolicy="off"
+								 paddingLeft="0" paddingRight="0" 
+								 enabled="false"/>
+					<s:Spacer height="3"/>
+				</s:VGroup>
+				<s:Spacer width="5"/>
+			</s:HGroup>
+		</s:VGroup>
+	</s:Panel>
+</s:Application>

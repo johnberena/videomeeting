@@ -1,0 +1,10 @@
+﻿cd C:\Program Files\Adobe\Flex Builder 3\sdks\3.2.0\frameworks\locale>
+C:\Program Files\Adobe\Flex Builder 3\sdks\3.2.0\frameworks\locale>copylocale en_US en
+C:\Program Files\Adobe\Flex Builder 3\sdks\3.2.0\frameworks\locale>copylocale ja_JP ja
+C:\Program Files\Adobe\Flex Builder 3\sdks\3.2.0\frameworks\locale>copylocale en_US th
+
+
+mxmlc -locale=en -source-path=locale/{locale} -include-resource-bundles=meeting_messages,collections,containers,controls,core,effects,skins,styles -output meeting_messages_en.swf
+mxmlc -locale=ja,en -source-path=locale/{locale} -include-resource-bundles=meeting_messages,collections,containers,controls,core,effects,skins,styles -output meeting_messages_ja.swf
+mxmlc -locale=th,en -source-path=locale/{locale} -include-resource-bundles=meeting_messages,collections,containers,controls,core,effects,skins,styles -output meeting_messages_th.swf
+mxmlc -locale=zh,en -source-path=locale/{locale} -include-resource-bundles=meeting_messages,collections,containers,controls,core,effects,skins,styles -output meeting_messages_zh.swf

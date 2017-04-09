@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<fxpProperties abbreviated="false" authoringTool="Flex Builder" compiles="true" parentProject="b52fa02a-c60d-4642-adcd-6f3104392e04" projectUUID="b52fa02a-c60d-4642-adcd-6f3104392e04" pureCatalystProject="false" sdkVersion="4.6.0" uuid="05a420e2-387c-4c2c-a688-4ee262d19692" version="15">
+  <projects/>
+  <src/>
+  <swc>
+    <linked location="sdkPlaceHolder" path="sdkPlaceHolder" position="0" uuid="05a420e2-387c-4c2c-a688-4ee262d19692"/>
+    <linked location="D:/workspace-flex4/videomeeting/libs" path="/libs" position="1" uuid="2dacc5cc-2ae1-40ca-aed2-6b79bb0ca3e2"/>
+    <linked location="${FLEXUNIT_LIB_LOCATION}/version4libs/Common" path="${FLEXUNIT_LIB_LOCATION}/version4libs/Common" position="2" uuid="2dacc5cc-2ae1-40ca-aed2-6b79bb0ca3e2"/>
+    <linked location="${FLEXUNIT_LIB_LOCATION}/version4libs/FlexProject" path="${FLEXUNIT_LIB_LOCATION}/version4libs/FlexProject" position="3" uuid="2dacc5cc-2ae1-40ca-aed2-6b79bb0ca3e2"/>
+    <linked location="${FLEXUNIT_LIB_LOCATION}/version4libs/FlexProject_Extended" path="${FLEXUNIT_LIB_LOCATION}/version4libs/FlexProject_Extended" position="4" uuid="2dacc5cc-2ae1-40ca-aed2-6b79bb0ca3e2"/>
+    <linked location="${FLEXUNIT_LOCALE_LOCATION}/version4locale/" path="${FLEXUNIT_LOCALE_LOCATION}/version4locale/" position="5" uuid="2dacc5cc-2ae1-40ca-aed2-6b79bb0ca3e2"/>
+  </swc>
+  <misc/>
+  <theme/>
+  <mxmlFormattingPrefs groupAttributesByState="true" maxLineWidth="100" mxmlAlignAttributes="true" mxmlAttributeOrder="id,userLabel,includeIn,excludeFrom,visible,x,y,z,left,right,top,bottom,width,height,minWidth,minHeight,maxWidth,maxHeight,label" mxmlKeepAttributeValuesOrganized="true"/>
+</fxpProperties>

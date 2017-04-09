@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:media="flash.media.*"
+			   creationComplete="init()">
+	
+	<fx:Style source="assets/styles/styles.css" />
+	<fx:Style source="assets/styles/notification_styles.css" />
+	
+	<fx:Script source="lib_editor.as" />
+	<fx:Script>
+		<![CDATA[
+					
+			private var presentFileRefList:FileReferenceList;
+			private var presentFileSize:Number = 0;
+			
+			private var is_slide_upload:Boolean = false;
+			// check the progress of tasks
+			private var pg_timer_interval:int = 1000;
+			private var tmp_timer_interval:int = 0;
+			
+			private var fileReference:FileReference;
+		//	private var presentFileRefList:FileReferenceList;
+			private var fileList:Array;
+			
+			private function init():void {
+				
+				mainPanel = editorPanel;
+				// set flag for passing the password checker
+				is_edit_action = false;
+				
+				common_init();
+				countInterval = 0;
+				serverAuthInterval = 0;
+				tmpInterval = setInterval(networkConnect, 1000);
+				
+				// get parameters
+				// author mode
+				is_new = (getUrlParamateres("new") == "1") ? true : false;
+				is_edit_mode = (getUrlParamateres("mode") == "edit") ? true : false;
+				// authorname
+				author = (getUrlParamateres("author") == null) ? "youarenotuser" : getUrlParamateres("author");
+				if (author == "admin") {
+					is_admin_permission = true;
+				}
+				// validate key
+				validkey_req = (getUrlParamateres("validkey") == null) ? "" : getUrlParamateres("validkey");
+				if (validkey_req == "" ) {
+					is_validkey_authen = false;
+				}
+				// ignore the valid key
+				is_validkey_authen = true;
+				
+				presentFileRefList = new FileReferenceList();
+				presentFileRefList.addEventListener(Event.SELECT, presentFileHandler);
+			}
+			
+			private function setContentData():void{
+				myDebug("setContentData");
+				course_title.text = meta_course_title;
+				course_password.text = meta_course_passwordmd5;
+				course_repassword.text = meta_course_passwordmd5;
+				course_viewpassword.text = meta_course_viewpasswordmd5;
+				course_reviewpassword.text = meta_course_viewpasswordmd5;
+				
+				if(meta_course_fileConversionOutput == "svg"){
+					SVG.selected = true;
+				} else if(meta_course_fileConversionOutput == "png"){
+					PNG.selected = true;
+				} else {
+					JPG.selected = true;
+				} 
+				
+				SVG.enabled = false;
+				PNG.enabled = false;
+				JPG.enabled = false;
+				
+				setExecuteButton();
+			}
+			
+			private function uploadPresentFile():void {
+				myDebug("uploadPresentFile");
+				var filter:Array = new Array();
+				filter.push(new FileFilter(resourceManager.getString('meeting_messages', 'pdf_filter_text'), "*.pdf"));
+				filter.push(new FileFilter(resourceManager.getString('meeting_messages', 'presentation_filter_text'), "*.odp;*.sxi;*.ppt;*.pptx"));
+				filter.push(new FileFilter(resourceManager.getString('meeting_messages', 'document_filter_text'), "*.odt;*.sxw;*.doc;*.docx"));
+				filter.push(new FileFilter(resourceManager.getString('meeting_messages', 'image_filter_text'), "*.png;*.jpg;*.jpeg,*.tif,*.tiff;*.bmp"));
+				filter.push(new FileFilter(resourceManager.getString('meeting_messages', 'video_filter_text'), "*.mov;*.avi;*.wmv;*.mpg;*.ogg;*.mp4;*.flv"));
+				presentFileRefList.browse(filter);
+			}
+			
+			private function presentFileHandler(event:Event):void {
+				myDebug("presentFileHandler");
+				presentFileRefList = FileReferenceList(event.target);
+				fileList = presentFileRefList.fileList;
+				
+				// get the first file that the user chose
+				fileReference = FileReference(fileList[0]);
+				presentFileSize = fileReference.size;
+				slideStatusText.text = fileReference.name;
+				is_slide_upload = true;
+				setExecuteButton();
+			
+			}
+			
+			private function presentUploadProgress(event:ProgressEvent):void {
+				var file:FileReference = FileReference(event.target);
+				var maxScale:Number = 100;
+				var progressScale:Number = (event.bytesLoaded * maxScale) / event.bytesTotal;
+				
+				presentUploadPgBar.visible = true;
+				presentUploadPgBar.includeInLayout = true;
+				presentUploadPgBar.setProgress(progressScale, maxScale);
+				executebtn.enabled = false;
+				slideuploadbtn.enabled = false;
+				uploadStatusText.text = resourceManager.getString('meeting_messages', 'file_uploading');
+			}
+			
+			private function presentUploadCompleteHandler(event:Event):void {
+				var gif:GIFPlayer =new GIFPlayer();
+								
+				busy_icon.visible = true;
+				busy_icon.includeInLayout = true;
+				presentUploadPgBar.visible = false;
+				presentUploadPgBar.includeInLayout = false;
+				slideuploadbtn.enabled = false;
+				is_slide_upload = true;
+				
+				//Loading wait icon
+				myDebug("GIF Loader");
+				busy_icon.source = gif;
+				gif.load(new URLRequest("assets/busy.gif"));
+				
+				// Status 
+		//		uploadStatusText.setStyle("color","#FF0000");
+		     	uploadStatusText.text = resourceManager.getString('meeting_messages', 'wait_file_conversion');
+							
+				//set timer for checking if conversion is complete
+				pgTimer = new Timer(pg_timer_interval);
+				pgTimer.addEventListener(TimerEvent.TIMER, progressHandler);
+				pgTimer.start();
+
+			}
+
+			
+			private function resetHandler():void {
+				course_title.text = "";
+				slideuploadbtn.enabled = true;
+				slideStatusText.text = "";
+				course_password.text = "";
+				course_repassword.text = "";
+				course_viewpassword.text = "";
+				course_reviewpassword.text = "";
+				
+				is_slide_upload = false;
+			}
+			
+			private function executeHandler():void {			
+				if ((StringUtil.trim(course_password.text) != StringUtil.trim(course_repassword.text)) ||
+					(StringUtil.trim(course_viewpassword.text) != StringUtil.trim(course_reviewpassword.text))) {
+					Alert.show(resourceManager.getString('meeting_messages', 'course_password_mismatch'));
+				}
+				else {
+					
+					//set conversion output
+					if(JPG.selected) {
+						convOutput = "jpg";
+					} else if (PNG.selected) {
+						convOutput = "png";
+					}
+					else if (SVG.selected) {
+						convOutput = "svg";
+					}
+					
+					SVG.enabled = false;
+					PNG.enabled = false;
+					JPG.enabled = false;
+
+					
+					// upload the file to the server side script
+					if (is_slide_upload) {
+						serverSideScript = "http://" + meetingServer + "/" + meeting_home + "/servlet/wbUploadFile?room=" + contentID + "&convOutput=" + convOutput + "&orig=1";
+						myDebug("URL : " + serverSideScript);
+						urlServerSide = new URLRequest(serverSideScript);
+						fileReference.addEventListener(ProgressEvent.PROGRESS, presentUploadProgress);
+						fileReference.addEventListener(Event.COMPLETE, presentUploadCompleteHandler);
+						fileReference.upload(urlServerSide);
+					} else {
+						pgTimer = new Timer(pg_timer_interval);
+						pgTimer.addEventListener(TimerEvent.TIMER, progressHandler);
+						pgTimer.start();
+					}
+
+					//generate course metadata at server
+					nc.call("genMetaXML", null, contentID, is_edit_mode, author,
+						StringUtil.trim(course_title.text), 
+						"0", "0",
+						StringUtil.trim(course_password.text),
+						StringUtil.trim(course_viewpassword.text),
+					    convOutput);
+						myDebug("NC.call : genMetaXML");
+					
+			//		if (CursorManager.currentCursorID == 0) { 
+			//			CursorManager.setBusyCursor();
+			//		}
+				}
+			}
+			
+			private function setExecuteButton(): void {
+				myDebug("setExecuteButton");
+				if (!is_edit_mode) {
+					executebtn.enabled = false;
+					if (StringUtil.trim(course_title.text) != "" && is_slide_upload) {
+						executebtn.enabled = true;
+					}
+				}
+				else {
+					executebtn.enabled = true;
+					slideuploadbtn.label = resourceManager.getString('meeting_messages', 'browse_more_text');
+					executebtn.label = resourceManager.getString('meeting_messages', 'next');
+				}
+			}
+			
+			private function clearStatusInfo():void
+			{
+				// TODO Auto Generated method stub
+				busy_icon.visible = false;
+				busy_icon.includeInLayout = false;
+				presentUploadPgBar.visible = false;
+				presentUploadPgBar.includeInLayout = false;
+				uploadStatusText.text = "";
+			}
+				
+			// dummy function
+			private function connectToWhiteboard(): void {
+				
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:Panel id="editorPanel" width="650" height="420" enabled="false" skinClass="skins.webelsPanelSkin">
+		<s:VGroup width="100%" height="100%" paddingLeft="10" paddingRight="10" paddingBottom="5" paddingTop="10" gap="1" >
+			
+			<mx:Grid width="100%" height="100%">
+				<mx:GridRow >
+					<mx:GridItem >
+						<s:Label text="{resourceManager.getString('meeting_messages', 'course_title')}" />
+					</mx:GridItem>				
+					<mx:GridItem >
+						<s:TextInput id="course_title" width="350" change="setExecuteButton()" />
+					</mx:GridItem>
+				</mx:GridRow>
+				<mx:GridRow >
+					<mx:GridItem >
+						<s:Label text="{resourceManager.getString('meeting_messages', 'course_password')}" />
+					</mx:GridItem>				
+					<mx:GridItem >
+						<s:TextInput id="course_password" width="100" displayAsPassword="true" />
+						<s:Label text="{resourceManager.getString('meeting_messages', 'course_repassword')}" />
+						<s:TextInput id="course_repassword" width="100" displayAsPassword="true" />
+					</mx:GridItem>
+				</mx:GridRow>
+				<mx:GridRow >
+					<mx:GridItem >
+						<s:Label text="{resourceManager.getString('meeting_messages', 'course_view_password')}" />
+					</mx:GridItem>				
+					<mx:GridItem >
+						<s:TextInput id="course_viewpassword" width="100" displayAsPassword="true" />
+						<s:Label text="{resourceManager.getString('meeting_messages', 'course_repassword')}" />
+						<s:TextInput id="course_reviewpassword" width="100" displayAsPassword="true" />
+					</mx:GridItem>
+				</mx:GridRow>
+				<mx:GridRow >
+					<mx:GridItem >
+						<s:Label text="{resourceManager.getString('meeting_messages', 'choose_slide')}" />
+					</mx:GridItem>
+					<mx:GridItem>
+						<s:TextInput id="slideStatusText" prompt="{resourceManager.getString('meeting_messages', 'supported_files')}" width="285" editable="false" />
+						<s:Button id="slideuploadbtn" width="80"
+								  label="{resourceManager.getString('meeting_messages', 'browse_text')}"
+								  buttonMode="true" click="uploadPresentFile();" enabled="true"
+								  mouseChildren="false"
+								  toolTip="{resourceManager.getString('meeting_messages', 'browse_text')}"
+								  useHandCursor="true"/>		
+					</mx:GridItem>
+				</mx:GridRow>
+				<mx:GridRow>
+					<mx:GridItem>
+						<s:Label id="conversion_label" text="{resourceManager.getString('meeting_messages', 'choose_conversion_output')}"/>
+					</mx:GridItem>
+					<mx:GridItem>	
+						<s:RadioButton groupName="conversion_option" id="JPG" label="{resourceManager.getString('meeting_messages', 'conv_output_jpg')}" width="100%"/>
+					</mx:GridItem>	
+				</mx:GridRow>	
+				<mx:GridRow>
+					<mx:GridItem/>
+					<mx:GridItem>
+						<s:RadioButton groupName="conversion_option" id="PNG" label="{resourceManager.getString('meeting_messages', 'conv_output_png')}" selected="true" width="100%"/>
+					</mx:GridItem>
+				</mx:GridRow>	
+				<mx:GridRow>
+					<mx:GridItem/>
+					<mx:GridItem>
+						<s:RadioButton groupName="conversion_option" id="SVG" label="{resourceManager.getString('meeting_messages', 'conv_output_svg')}" width="100%"/>
+					</mx:GridItem>
+				</mx:GridRow>
+				<mx:GridRow>
+				</mx:GridRow>
+				<mx:GridRow>
+				</mx:GridRow>
+			</mx:Grid>
+			
+			<s:VGroup id="statusInfo" width="100%" height="100%" horizontalAlign="center">
+					<mx:ProgressBar id="presentUploadPgBar" visible="false" includeInLayout="false" width="150" height="20" label="" labelPlacement="center" mode="manual"  />
+					<mx:Image id="busy_icon" visible="false" includeInLayout="false" width="66" height="66" />
+					<s:Label id="uploadStatusText" text=""  />
+			</s:VGroup>
+			
+			<s:Button id="executebtn" visible="true" width="80"
+					  label="{resourceManager.getString('meeting_messages', 'upload')}"
+					  buttonMode="true" click="executeHandler()" enabled="false"
+					  mouseChildren="false"
+					  toolTip="{resourceManager.getString('meeting_messages', 'upload')}"
+					  useHandCursor="true"/>
+		</s:VGroup>
+
+	</s:Panel>
+</s:Application>

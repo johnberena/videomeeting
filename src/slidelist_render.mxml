@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ * 
+ * This source code file is part of the WebELS Software System.
+ * WebELS is under the WebELS Software License Agreement. 
+ * 
+ *        ***Preamble of WebELS Software License Agreement***
+ *
+ * This Software License Agreement (hereinafter referred to as License) 
+ * is a legal agreement between the User (either an individual or an entity, 
+ * who will be referred to in this License as User) and the WebELS Project 
+ * (represented by the project leader and patent owner, and will be referred 
+ * to in this License as WebELS) of National Institute of Informatics for 
+ * the use of WebELS Software (Software). By downloading, installing, copying, 
+ * modifying, redistributing, or using the Software, the User is agreeing to 
+ * be bound by the terms and conditions of this License. If you do not agree 
+ * to the terms and conditions of this License, do not download, install, copy, 
+ * modify, redistribute or use in any way as a whole or any part of the Software.
+ *
+ * For more details, see the WebELS Software License Agreement in 
+ * license.txt in root directory of this package. If not found, 
+ * see <http://webels.ex.nii.ac.jp/service/download/license/>
+ *
+ * Should you have any questions concerning this License, or if you desire 
+ * to contact WebELS Project Leader for any reason, please write to:
+ * 
+ * Prof. Haruki Ueno, PhD
+ * Professor Emeritus, National Institute of Informatics
+ * 2-1-2 Hitotsubashi, Chiyodaku
+ * 101-8430 Tokyo,Japan
+ * Tel. +81-3-4212-2630
+ * E-mail: ueno@nii.ac.jp
+ * 
+ * WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+ * http://webels.ex.nii.ac.jp/
+ * Copyright © 2012 by WebELS Project of NII. All rights reserved.
+ *
+-->
+
+<!-- http://blog.flexexamples.com/2008/02/15/creating-a-simple-image-gallery-with-the-flex-horizontallist-control/ -->
+<mx:VBox xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		verticalAlign="top"
+		horizontalAlign="center"
+		paddingLeft="0" paddingRight="0" paddingBottom="0" paddingTop="0"
+		borderStyle="solid" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+
+	<mx:Image source="{data.thumb}" width="100%" height="90" horizontalAlign="center" />
+	<mx:Text text="{data.title}" width="100%" paddingTop="0" paddingBottom="0" />
+	
+</mx:VBox>

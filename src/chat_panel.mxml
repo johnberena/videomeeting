@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 		xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+		 		width="100%" height="100%"
+		 		minWidth="300" minHeight="480"
+		 		close="closeWindow(event)"
+		 		creationComplete="init()" 
+		 		title="{resourceManager.getString('meeting_messages', 'label_chat_room')}">
+	
+	<fx:Script>
+		<![CDATA[		
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			private function init():void {
+				myDebug("init");
+			}
+			
+			public function initData(text:String):void {
+				myDebug("loading chat messages");
+				this.txtChatBox2.htmlText = text;
+			}
+			
+			public function closeWindow(evt:CloseEvent):void {
+				myDebug("closeWindow");
+				PopUpManager.removePopUp(this);
+			}
+			
+			// debugging
+			private function myDebug(debugMsg:String):void {
+				if (true) {
+					ExternalInterface.call("console.log", "--chatDEBUG-- " + debugMsg);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	<s:VGroup id="chatArea2" width="100%" height="100%" 
+			  paddingLeft="2" paddingRight="2" paddingBottom="2" paddingTop="2">
+		<s:HGroup width="100%" height="18" paddingLeft="0" paddingRight="0" gap="2">
+			<mx:ColorPicker id="cmpColorPicker2" showTextField="false" selectedColor="0x000000"/>
+			<s:TextInput id="txtMsg2" width="100%" enter="dispatchEvent(new Event('callSendMessage'));"
+						 click="dispatchEvent(new Event('callClearNoticeMsg'));"
+						 prompt="{resourceManager.getString('meeting_messages', 'label_message_prompt')}"/>
+			<s:Button id="btnMessage2" width="50"
+					  label="{resourceManager.getString('meeting_messages', 'label_message')}"
+					  click="dispatchEvent(new Event('callSendMessage'));"
+					  color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+					  skinClass="skins.sparkButtonSkin"/>
+		</s:HGroup>
+		<mx:TextArea id="txtChatBox2" width="100%" height="100%" borderColor="#a9a9a9"
+					 color="#000000" editable="false" paddingLeft="2"
+					 paddingRight="2" styleName="chatBox"
+					 verticalScrollPolicy="auto"/>
+	</s:VGroup>
+</s:TitleWindow>

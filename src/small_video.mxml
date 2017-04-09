@@ -1,0 +1,860 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ * 
+ * This source code file is part of the WebELS Software System.
+ * WebELS is under the WebELS Software License Agreement. 
+ * 
+ *        ***Preamble of WebELS Software License Agreement***
+ *
+ * This Software License Agreement (hereinafter referred to as License) 
+ * is a legal agreement between the User (either an individual or an entity, 
+ * who will be referred to in this License as User) and the WebELS Project 
+ * (represented by the project leader and patent owner, and will be referred 
+ * to in this License as WebELS) of National Institute of Informatics for 
+ * the use of WebELS Software (Software). By downloading, installing, copying, 
+ * modifying, redistributing, or using the Software, the User is agreeing to 
+ * be bound by the terms and conditions of this License. If you do not agree 
+ * to the terms and conditions of this License, do not download, install, copy, 
+ * modify, redistribute or use in any way as a whole or any part of the Software.
+ *
+ * For more details, see the WebELS Software License Agreement in 
+ * license.txt in root directory of this package. If not found, 
+ * see <http://webels.ex.nii.ac.jp/service/download/license/>
+ *
+ * Should you have any questions concerning this License, or if you desire 
+ * to contact WebELS Project Leader for any reason, please write to:
+ * 
+ * Prof. Haruki Ueno, PhD
+ * Professor Emeritus, National Institute of Informatics
+ * 2-1-2 Hitotsubashi, Chiyodaku
+ * 101-8430 Tokyo,Japan
+ * Tel. +81-3-4212-2630
+ * E-mail: ueno@nii.ac.jp
+ * 
+ * WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+ * http://webels.ex.nii.ac.jp/
+ * Copyright © 2012 by WebELS Project of NII. All rights reserved.
+ *
+-->
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:media="flash.media.*"
+			   xmlns:local="*"
+			   width="100%" height="100%"
+			   minWidth="640" minHeight="480"
+			   resize="updateHeights(event)"
+			   applicationComplete="init(event)">
+	
+	<fx:Style source="assets/styles/styles.css" />
+	<fx:Style source="assets/styles/notification_styles.css" />
+	<fx:Script source="lib_meeting.as" />
+	<fx:Script source="lib_ui.as" />
+	<fx:Script source="lib_whiteboard.as" />
+	<fx:Script>
+		<![CDATA[
+			import mx.events.CloseEvent;
+									
+			private var ready:Boolean = false;
+			private var noticeFlag:Boolean = false;
+			private var newChatMsg:String = "";
+			
+			private var shareFileRefList:FileReferenceList;
+			private var shareFileReference:FileReference;
+			private var shareFileList:Array;
+			private var shareFileSize:Number = 0;
+			private var is_file_ready:Boolean = false;
+			private var serverSideURL:URLRequest;
+			private var serverSideRequest:String = null;
+			private var sharedFilesList:ArrayCollection = new ArrayCollection;
+			private var downloadFileURL:URLRequest;
+			private var filename:String = null;
+			private var downloadFile:FileReference;
+			
+			
+			private function init(event:Event):void{
+				// run on web mode
+				APPMODE = false;
+				
+				// enable / disable resize event
+				AUTO_RESIZE_APP = true;
+				
+				mainPanel = meetingPanel;
+				common_init();
+				whiteboard_init(whiteboardArea);
+				resetEnvironment();
+				
+				if (!APPMODE) {
+					ExternalInterface.addCallback("small_video", cleanUp);//Detect Browser
+				} 
+				
+				// fix the workingArea widget size
+				//workingArea.width = meetingPanel.width - meetingPanel.getStyle("paddingLeft") - meetingPanel.getStyle("paddingRight") - meetingPanel.getStyle("borderThicknessLeft") - meetingPanel.getStyle("borderThicknessRight");
+				
+				// set default quality
+				qualityMode = 3;
+				qualityList.selectedIndex = qualityMode;
+				qualityList.validateNow();
+				
+				/* Set up full screen handler. */
+				systemManager.stage.addEventListener(FullScreenEvent.FULL_SCREEN, fullScreenHandler);
+				
+				changeInterfaceLayout();
+				//updateHeights(event);
+				changePanelScale()
+				
+				// ENTER KEY LOGIN - 20121203 //
+				if(txtUser != null) {
+					txtUser.addEventListener(FlexEvent.ENTER, txtUserEnterHandler);
+				}
+			}
+			
+			// ENTER KEY LOGIN - 20121203 //
+			protected function txtUserEnterHandler(event:FlexEvent):void {
+				loginManagement();
+			}
+			
+			/*** http://flexdevtips.blogspot.jp/2010/08/detecting-browser-height.html ***/
+			protected function updateHeights(event:ResizeEvent):void {
+				//myDebug("updateHeights");
+				if (event.type == ResizeEvent.RESIZE) {
+					ready = true;
+				}
+				if (!ready) {
+					return;
+				}
+				//myDebug("do updateHeights");
+				changePanelScale();
+			}
+			
+			public function newMessage(user:String, msg:String, color:String, senderID:Number):void {
+				myDebug("SO : newMessage - " + msg);
+				
+				if(clientID != senderID){   // check the clientID ID to notify the receiver
+					myDebug("not senderID - " + msg);
+					if (tabNavigator.selectedIndex != 1) tabNavigator.selectedIndex = 1;  // Show chat room
+					newNoticeMsg.visible = true;
+					noticeFlag = true; // start blinking the alert
+					//	newChatMsg += "<font color=\"#" + color + "\"><b>" + user + ":</b> " +  msg + "</b></font>\n";
+				}
+				txtChatBox.validateNow();
+				txtChatBox.htmlText += "<font size=\"12\" color=\"#" + color + "\"><b>" + user + ":</b> " +  msg + "</font>\n";
+				txtChatBox.validateNow();
+				txtChatBox.verticalScrollPosition = txtChatBox.maxVerticalScrollPosition; 
+				
+				if(chatFloatingPanel != null) {
+					chatFloatingPanel.txtChatBox2.htmlText += "<font size=\"12\" color=\"#" + color + "\"><b>" + user + ":</b> " +  msg + "</font>\n";
+					chatFloatingPanel.txtChatBox2.validateNow(); 
+					chatFloatingPanel.txtChatBox2.verticalScrollPosition = txtChatBox.maxVerticalScrollPosition; 
+				} 
+			}
+			
+			private function blinkNoticeMsg():void {
+				if (noticeFlag) {
+					newNoticeMsg.visible = !newNoticeMsg.visible;
+				}
+			}
+			
+			private function clearNoticeMsg ():void {    //to clear the alert of the new message
+				newNoticeMsg.visible = false;
+				noticeFlag = false;
+			//	newChatMsg = "";
+			}
+			
+			private function showNoticeMsg(): void {	
+			//	var title:String = "New Messages in the Chat Box";
+			//	Alert.show(newChatMsg, title, Alert.OK);	
+			//	txtChatBox.htmlText += newChatMsg;	
+			//	if (chatFloatingPanel != null) {
+			//		chatFloatingPanel.txtChatBox2.htmlText += newChatMsg;
+			//	}	
+				clearNoticeMsg();
+			}
+			
+			private function echoTestManagement():void {
+				echoTestBox = echotest_box(PopUpManager.createPopUp(this, echotest_box, true));
+				echoTestBox.init(nc, clientID, qualityArray, qualityMode, microphoneSlider, H264_VIDEO_CODEC, H264_PROFILE, H264_LEVEL, SEND_BUFFER_TIME, RECV_BUFFER_TIME, true);
+				PopUpManager.centerPopUp(echoTestBox);
+			}
+			
+			private function playLocalVideo():void {
+				var isNew:Boolean = true;
+				var i:int;
+				myDebug("playLocalVideo");
+			
+				for (i = 0; i < MAX_DISPLAYS; i++) {
+					if (displayObj[i].connected && connectionObj[displayObj[i].connection].client == clientID) {
+						isNew = false;
+						break;
+					}
+				}
+				
+				if (isNew) {
+					displayVideo(CONN_INDEX_SENDER, clientID, loging_name + " (" + resourceManager.getString('meeting_messages', 'label_host') + ")", true, myCam, null);
+				}
+			}
+			
+			//Microphone Activity Level 
+			private function showMicActivity(e:TimerEvent):void {
+				gradientBoxMatrix.createGradientBox(90, 10, 0, 0, 0);
+				myShape.graphics.clear();
+				myShape.graphics.beginGradientFill(GradientType.LINEAR, [0x00FF00, 0xFFFF00, 0xFF0000], [0.6, 0.6, 0.6], [0, 192, 255], gradientBoxMatrix);
+				myShape.graphics.drawRect(0, 0, myMic.activityLevel, 10);
+				myShape.graphics.endFill();
+				micTool.rawChildren.addChild(myShape);
+			}
+			
+			private function clearMicActivity():void {
+			  	micTimer.stop();
+			  	myShape.graphics.clear();
+				myShape.graphics.beginFill(0xFFFFFF, 0.0);
+				myShape.graphics.drawRect(0, 0, 100, 10);
+				myShape.graphics.endFill();
+				micTool.rawChildren.addChild(myShape); 
+			}
+			
+			private function connectToWhiteboard(): void {
+				myDebug("connectToWhiteboard");
+				prepareWhiteboard();
+			}
+			
+			private function disconnectWhiteboard(): void {
+				myDebug("disconnectWhiteboard");
+				cleanWhiteboard();
+			}
+			
+			// Invite SIP User from videomeeting room
+			private function inviteExternalUser(): void {
+				myDebug("inviteExternalUser");
+
+				sipDialerBox = inviteSIPUser(PopUpManager.createPopUp(this, inviteSIPUser, false));
+				sipDialerBox.init(nc, clientID);
+			//	inviteExtUserWindow.title="SIP Dialer";
+			//	inviteExtUserWindow.setStyle("borderAlpha", 0.9);
+				PopUpManager.centerPopUp(sipDialerBox);	
+			}
+			
+			// Admin User Management
+			private function userManagement(): void {
+				myDebug("userManagement - " + userManagementPanel );
+				
+				if(!userManagementPanel) {
+					myDebug("userManagement");
+					userManagementPanel = admin_panel(PopUpManager.createPopUp(this, admin_panel, false));
+					userManagementPanel.initData(dpUsers);
+					userManagementPanel.addEventListener('callSetVideomain', onCallSetMainvideo);
+					userManagementPanel.addEventListener('callBlockUserCam', onCallBlockUserCam);
+					userManagementPanel.addEventListener('callBlockAllUserCam', onCallBlockAllUserCam);
+					userManagementPanel.addEventListener('callMuteUser', onCallMuteUser);
+					userManagementPanel.addEventListener('callMuteAllUser', onCallMuteAllUser);
+					userManagementPanel.addEventListener('callKickUser', onCallKickUser);
+					userManagementPanel.addEventListener('callInviteExternalUser', onCallInviteExternalUser);
+					userManagementPanel.adminUsersList.addEventListener(ListEvent.ITEM_DOUBLE_CLICK, openVideo , false, EventPriority.DEFAULT_HANDLER);
+					userManagementPanel.addEventListener(CloseEvent.CLOSE, adminPanelClosed);
+					PopUpManager.centerPopUp(userManagementPanel);
+				}	
+			}
+			
+			protected function onCallSetMainvideo(event:Event):void{
+				setMainvideo();
+			}
+			
+			protected function onCallBlockUserCam(event:Event):void{
+				blockUserCam();
+			}
+			
+			protected function onCallBlockAllUserCam(event:Event):void{
+				blockAllUserCam();
+			}
+			
+			protected function onCallMuteUser(event:Event):void{
+				muteUser();
+			}
+			
+			protected function onCallMuteAllUser(event:Event):void{
+				muteAllUser();
+			}
+			
+			protected function onCallKickUser(event:Event):void{
+				kickUser();
+			}
+			
+			protected function onCallInviteExternalUser(event:Event):void{
+				inviteExternalUser();
+			}
+			
+			protected function adminPanelClosed(event:Event):void{
+				myDebug("adminPanelClosed");
+				userManagementPanel = null;
+			}
+			
+			// shared video display -　20121212	
+			protected function sharedDisplay_change(event:Event):void {
+				myDebug("sharedDisplay_change");
+				if(sharedDisplay.selected) {
+					is_shared_display = true;
+				}else{
+					is_shared_display = false;
+				}
+				sharedDisplay_toggle();
+			}
+			
+			// video freeze recovery function - 20130131
+			protected function videoFreezeRecoverFunction():void {
+				myDebug("videoFreezeRecoverFunction");
+				Alert.show(resourceManager.getString('meeting_messages', 'confirm_reload_Meeting'), resourceManager.getString('meeting_messages', 'confirm_reload_Meeting_title'),
+				Alert.YES|Alert.NO, null, doReloadFunction, null, Alert.NO);
+			}
+			
+			private function doReloadFunction(event:CloseEvent):void {
+				myDebug("doReloadFunction");
+				if(event.detail == Alert.YES) {
+					if (CursorManager.currentCursorID == 0) { 
+						CursorManager.setBusyCursor();
+					}
+					
+					is_auto_reconnection = true;
+					meetingLogout();
+					// call auto-reconnection
+					reconnectTimeID = setInterval(autoReconnecting, 5000); // check again on next 5 seconds
+					reconnectCount = 0;
+				}
+			}
+			
+			// Chat Floating Panel
+			private function chatFloatingPanelHandler(): void {
+				myDebug("chatFloatingPanel - " + chatFloatingPanel );
+				
+				if(!chatFloatingPanel) {
+					myDebug("chatFloatingPanel");
+					chatFloatingPanel = chat_panel(PopUpManager.createPopUp(this, chat_panel, false));
+					chatFloatingPanel.addEventListener('callClearNoticeMsg', onCallClearNoticeMsg); 
+					chatFloatingPanel.addEventListener('callSendMessage', onCallSendMessage); 
+					chatFloatingPanel.addEventListener(CloseEvent.CLOSE, chatPanelClosed);
+					chatFloatingPanel.initData(txtChatBox.htmlText);
+					//PopUpManager.centerPopUp(chatFloatingPanel);
+				}	
+			}
+			
+			protected function onCallClearNoticeMsg(event:Event):void{
+				myDebug("chatFloating :　clearNoticeMsg");
+				clearNoticeMsg();
+			}
+			
+			protected function onCallSendMessage(event:Event):void{
+				myDebug("chatFloating : sendMessage");
+				sendMessage( chatFloatingPanel.txtMsg2.text, chatFloatingPanel.cmpColorPicker2.selectedColor.toString(16));
+			}
+			
+			protected function chatPanelClosed(event:Event):void{
+				myDebug("chatPanelClosed");
+			//	PopUpManager.removePopUp(chatFloatingPanel);
+				chatFloatingPanel = null;
+			}
+			
+			protected function chatRoom_clickHandler(event:MouseEvent):void {
+				myDebug("txtMsg SetFocus");
+				txtMsg.setFocus();
+			}
+			
+			protected function browseBtn_clickHandler(event:MouseEvent):void {
+				if(!is_file_ready){
+					myDebug("browse file to share");
+					var filter:Array = new Array();
+					filter.push(new FileFilter("All Files", "*.*"));
+					shareFileRefList.browse(filter);
+				} else if(is_file_ready){
+					serverSideRequest = "http://" + meetingServer + "/" + meeting_home + "/servlet/uploadSharedFile?room=" + contentID;
+					myDebug("URL : " + serverSideRequest);
+					serverSideURL = new URLRequest(serverSideRequest);
+					shareFileReference.addEventListener(ProgressEvent.PROGRESS, progressBarEventHandler);
+					shareFileReference.addEventListener(Event.COMPLETE, uploadCompleteHandler);
+					shareFileReference.upload(serverSideURL);
+				}
+			}
+			
+			private function progressBarEventHandler(event:ProgressEvent):void {
+				var file:FileReference = FileReference(event.target);
+				var maxScale:Number = 100;
+				var progressScale:Number = (event.bytesLoaded * maxScale) / event.bytesTotal;
+				
+				progressBar.visible = true;
+				progressBar.setProgress(progressScale, maxScale);	
+			}
+			
+			private function uploadCompleteHandler(event:Event):void {
+				myDebug("file upload completed");
+				progressBar.visible = false;
+				browseBtn.label = "Browse";
+				fileUpload.text = null;
+				is_file_ready = false;
+				
+				//get list of shared files 
+				nc.call('getSharedFiles', new Responder(sharedFilesResult), contentID);
+				myDebug("NC.call : getSharedFiles");
+				
+			}
+			
+
+			private function  sharedFilesResult(sharedFiles:Array):void {	
+				myDebug("display shared files");
+				//myDebug(sharedFiles.toString());
+				sharedFilesList.removeAll();
+				for (var i:int=0; i<sharedFiles.length; i++) {
+					if(sharedFiles[i].toString() != "index.html") {
+						sharedFilesList.addItem(sharedFiles[i]);
+					}
+				}
+		
+			}
+			
+			private function shareFileHandler(event:Event):void {
+				myDebug("file to share selected");
+				shareFileRefList = FileReferenceList(event.target);
+				shareFileList = shareFileRefList.fileList;
+				shareFileReference = FileReference(shareFileList[0]);
+				shareFileSize = shareFileReference.size;
+				fileUpload.text = shareFileReference.name;
+				is_file_ready = true;
+				setUploadButton();
+			}
+			
+			private function setUploadButton():void {
+				if(!is_file_ready){
+					browseBtn.label = "Browse";
+				} else if(is_file_ready){
+					browseBtn.label = "Upload";
+				}
+			}
+			
+			protected function fileUpload_clickHandler(event:MouseEvent):void {
+				myDebug("browse file to share");
+				var filter:Array = new Array();
+				filter.push(new FileFilter("All Files", "*.*"));
+				shareFileRefList.browse(filter);
+			}
+			
+			protected function fileSharing_clickHandler(event:MouseEvent):void {
+				deleteBtn.addEventListener(FlexEvent.BUTTON_DOWN, confirmDeleteSharedFile);
+				deleteAllBtn.addEventListener(FlexEvent.BUTTON_DOWN, confirmDeleteAllSharedFiles);
+				downloadBtn.addEventListener(FlexEvent.BUTTON_DOWN, downloadSharedFile);
+			//	sharedFilesArray.addEventListener(ListEvent.ITEM_CLICK, selectItem);
+			}
+			
+			protected function fileSharing_updateCompleteHandler(event:FlexEvent):void {
+				//get list of shared files 
+				nc.call('getSharedFiles', new Responder(sharedFilesResult), contentID);
+				myDebug("NC.call : getSharedFiles");
+			}
+			
+			private function confirmDeleteSharedFile(evt:Event):void {
+				myDebug("Confirm deleteSharedFile");
+				Alert.show("Are you sure to delete the selected file?",
+					"System Alert", Alert.OK|Alert.CANCEL, this, doDeleteSharedFile);
+			}
+			
+			private function doDeleteSharedFile(evt:CloseEvent): void {
+				if (evt.detail == Alert.OK) {
+					myDebug("doDeleteSharedFile");
+					
+					var selectedFile:Object = sharedFilesArray.selectedItem;
+					nc.call('deleteSharedFile', null, contentID, selectedFile.toString());
+					myDebug("NC.call : deleting... " + selectedFile.toString());
+					nc.call('getSharedFiles', new Responder(sharedFilesResult), contentID);
+					myDebug("NC.call : getSharedFiles");
+				}
+			}
+			
+			private function confirmDeleteAllSharedFiles(evt:Event):void {
+				myDebug("Confirm deleteAllSharedFiles");
+				Alert.show("Are you sure to delete all shared files?",
+					"System Alert", Alert.OK|Alert.CANCEL, this, doDeleteAllSharedFiles);
+			}
+			
+			private function doDeleteAllSharedFiles(evt:CloseEvent): void {
+				if (evt.detail == Alert.OK) {
+					myDebug("doDeleteAllSharedFiles");
+					
+					nc.call('deleteAllSharedFiles', null, contentID);
+					myDebug("NC.call : deleting all shared files");
+					nc.call('getSharedFiles', new Responder(sharedFilesResult), contentID);
+					myDebug("NC.call : getSharedFiles");
+				}
+			}
+			
+			private function downloadSharedFile(evt:Event):void {
+				myDebug("downloadSharedFile");
+			
+				var selectedFile:Object = sharedFilesArray.selectedItem;
+				downloadFileURL = new URLRequest(contentID + "/shared/" + selectedFile.toString());
+				filename = selectedFile.toString();
+				downloadFile = new FileReference();
+				configureListeners(downloadFile);
+				downloadFile.download(downloadFileURL, filename);
+			}
+			
+			private function configureListeners(dispatcher:IEventDispatcher):void {
+				dispatcher.addEventListener(Event.CANCEL, cancelHandler);
+				dispatcher.addEventListener(Event.COMPLETE, completeHandler);
+				dispatcher.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				dispatcher.addEventListener(Event.OPEN, openHandler);
+				dispatcher.addEventListener(ProgressEvent.PROGRESS, progressBarEventHandler); // use the same progress bar as in the upload
+				dispatcher.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				dispatcher.addEventListener(Event.SELECT, selectHandler);
+			}
+			
+			private function cancelHandler(event:Event):void {
+				myDebug("cancelHandler: " + event);
+			}
+			
+			private function completeHandler(event:Event):void {
+				myDebug("completeHandler: " + event);
+				progressBar.visible = false;
+			}
+			
+			private function ioErrorHandler(event:IOErrorEvent):void {
+				myDebug("ioErrorHandler: " + event);
+			}
+			
+			private function openHandler(event:Event):void {
+				myDebug("openHandler: " + event);
+			}
+			
+			private function downloadProgressHandler(event:ProgressEvent):void {
+				var file:FileReference = FileReference(event.target);
+				myDebug("progressHandler name=" + file.name + " bytesLoaded=" + event.bytesLoaded + " bytesTotal=" + event.bytesTotal);
+			}
+			
+			private function securityErrorHandler(event:SecurityErrorEvent):void {
+				myDebug("securityErrorHandler: " + event);
+			}
+			
+			private function selectHandler(event:Event):void {
+				var file:FileReference = FileReference(event.target);
+				myDebug("selectHandler: name=" + file.name + " URL=" + downloadFileURL.url);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Metadata>
+		[ResourceBundle("meeting_messages")]
+	</fx:Metadata> 
+	
+	<fx:Declarations>
+		<mx:DateFormatter id="dateFormatter" formatString="YYYY.MM.DD HH:NN:SS"/>
+		<s:VerticalLayout id="vLayout" paddingBottom="1" paddingLeft="1" paddingRight="1" paddingTop="2" horizontalAlign="center" />
+		<s:HorizontalLayout id="hLayout" paddingBottom="1" paddingLeft="1" paddingRight="1" paddingTop="2" horizontalAlign="center" verticalAlign="middle"/>
+		<s:VerticalLayout id="vLayout1" gap="1" paddingBottom="1" paddingLeft="1" paddingRight="1" paddingTop="2" horizontalAlign="center" />
+		<s:HorizontalLayout id="hLayout1" gap="1" paddingBottom="1" paddingLeft="1" paddingRight="1" paddingTop="2" horizontalAlign="center" verticalAlign="middle"/>
+		<s:GroupBase id="wideVideo" />
+	</fx:Declarations>
+    
+	<!--
+	<mx:Resize duration="200" id="r1"/>
+	<mx:Zoom id ="z1" originX="0" originY="0" zoomWidthFrom="0.5" zoomWidthTo="1" zoomHeightFrom="0.5" zoomHeightTo="1" duration="500"/>
+	-->
+	
+	<s:Panel id="meetingPanel" width="300" height="668" minWidth="300" minHeight="400"
+			 enabled="false" skinClass="skins.webelsPanelSkin">
+		<s:HGroup id="meetingPanelGroup" width="100%" height="100%" gap="2">
+			<s:VGroup id="layoutControl" width="28" height="100%" horizontalAlign="center" paddingLeft="1">
+				<s:Spacer height="5" />
+				<s:Button id="newNoticeMsg" visible="false" width="20" height="20"
+						  click="showNoticeMsg()" icon="@Embed(source='assets/chat-red-20x20.jpg')"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_new_chat_msg')}"
+						  skinClass="skins.webelsButtonSkin"/>	
+				<s:Spacer height="10" />
+				<s:Button id="tgMainLayout" width="26" click="forChangingInterfaceLayout(1)"
+						  icon="{icon_layout_vw_switch}" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_layout_standard')}"/>
+				<s:Button id="tgVideoLayout" width="26" click="forChangingInterfaceLayout(2)"
+						  icon="{icon_layout_v_switch}" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_layout_video_small')}"/>
+				<s:Button id="tgWhiteboardLayout" width="26" click="forChangingInterfaceLayout(3)"
+						  icon="{icon_layout_w_switch}" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_layout_presentation')}"/>
+				<s:Button id="tgBigVideoLayout" width="26" click="forChangingInterfaceLayout(4)"
+						  icon="{icon_layout_b_switch}" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_layout_video_wide')}"/>
+				<s:Button id="tgFullVideoLayout" width="26" click="toggleFullScreen()" 
+						  icon="{icon_layout_fs_switch}" skinClass="skins.webelsButtonSkin"
+						  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_full_screen_on')}"/>
+				<s:Button id="chatFloatingBox" width="26" click="chatFloatingPanelHandler()" 
+						  icon="{icon_chat_floating_panel}" skinClass="skins.webelsButtonSkin"
+						  toolTip="Chat Panel"/>
+			</s:VGroup>
+					
+			<s:VGroup id="meetingArea" visible="true" width="266" height="100%" includeInLayout="{meetingArea.visible}" gap="2">
+					<s:Group id="userArea" width="266" height="24">
+						<s:Label text="{resourceManager.getString('meeting_messages', 'label_login_name')}" width="40" left="2" top="8" 
+								id="label_name" color="{resourceManager.getUint('meeting_messages', 'font_color')}"/>
+						<s:TextInput id="txtUser" enabled="true" width="150" left="44" top="2" prompt="{resourceManager.getString('meeting_messages', 'label_login_name_prompt')}"/>
+						<s:Button id="btnLogin" width="60" left="198" top="2" cornerRadius="0"
+								label="{resourceManager.getString('meeting_messages', 'login')}"
+								click="loginManagement()" color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+								skinClass="skins.sparkButtonSkin"/>
+						<s:Button id="record" label="Record" visible="false" includeInLayout="false"/>	
+					</s:Group>
+					<s:Group id="devicesQuality" width="266" height="24" color="#000000">
+							<s:Label text="{resourceManager.getString('meeting_messages', 'label_quality')}"  width="40" left="2" top="6"
+									 textAlign="left" color="{resourceManager.getUint('meeting_messages', 'font_color')}"/>
+							<s:DropDownList id="qualityList" width="150" change="changeQualityFromList()" left="44" top="0" cornerRadius="0"
+											prompt="{resourceManager.getString('meeting_messages', 'label_video_quality_prompt')}"
+											requireSelection="true" selectedIndex="2"
+											skinClass="skins.webelsDropDownListSkin"
+											color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+											toolTip="{resourceManager.getString('meeting_messages', 'tooltip_video_quality_option')}">
+								<s:ArrayCollection>
+									<fx:String>{resourceManager.getString('meeting_messages', 'label_quality_auto')}</fx:String>
+									<fx:String>{resourceManager.getString('meeting_messages', 'label_quality_poor')}</fx:String>
+									<fx:String>{resourceManager.getString('meeting_messages', 'label_quality_low')}</fx:String>
+									<fx:String>{resourceManager.getString('meeting_messages', 'label_quality_normal')}</fx:String>
+									<fx:String>{resourceManager.getString('meeting_messages', 'label_quality_high')}</fx:String>
+									<fx:String>{resourceManager.getString('meeting_messages', 'label_quality_hi_definition')}</fx:String>
+								</s:ArrayCollection>
+							</s:DropDownList>
+							<s:Button id="videoFreezeRecover" width="20" height="20" left="198" top="2"
+									  click="videoFreezeRecoverFunction()" 
+									  icon="{icon_video_freeze_recover}" skinClass="skins.webelsButtonSkin"
+									  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_video_freeze_recover')}"/>
+					</s:Group>
+						
+					<s:VGroup id="videoSection" width="266">
+						<s:Group id="logoBG">
+							 	<s:Rect id="background" left="0" top="0" right="0" bottom="0" alpha=".25">
+									<s:fill>
+										<s:BitmapFill source="@Embed(source='assets/webelsBg.png')" fillMode="repeat"/>
+									</s:fill>
+								</s:Rect>
+								<s:Group id="displayArea" width="100%" height="100%">
+									<s:TitleWindow id="window1" visible="true" width="50%"
+												   height="50%" minWidth="132" minHeight="119"
+												   backgroundAlpha="0.2" close="closeVideoByButton(0)"
+												   doubleClick="enlargeDisplay(0)"
+												   doubleClickEnabled="true" resizeEffect="r1" 
+												   x="0" y="0"
+												   skinClass="skins.webelsTitleWindowSkin">
+									</s:TitleWindow>
+									<s:TitleWindow id="window2" visible="true" width="50%"
+												   height="50%" minWidth="132" minHeight="119"
+												   backgroundAlpha="0.2" close="closeVideoByButton(1)"
+												   doubleClick="enlargeDisplay(1)"
+												   doubleClickEnabled="true" resizeEffect="r1" 
+												   x="{displayArea.width/2}" y="0"
+												   skinClass="skins.webelsTitleWindowSkin">
+									</s:TitleWindow>
+									<s:TitleWindow id="window3" visible="true" width="50%"
+												   height="50%" minWidth="132" minHeight="119"
+												   backgroundAlpha="0.2" close="closeVideoByButton(2)"
+												   doubleClick="enlargeDisplay(2)"
+												   doubleClickEnabled="true" resizeEffect="r1" 
+												   x="0" y="{displayArea.height/2}"
+												   skinClass="skins.webelsTitleWindowSkin">
+									</s:TitleWindow>
+									<s:TitleWindow id="window4" visible="true" width="50%"
+												   height="50%" minWidth="132" minHeight="119"
+												   backgroundAlpha="0.2" close="closeVideoByButton(3)"
+												   doubleClick="enlargeDisplay(3)"
+												   doubleClickEnabled="true" resizeEffect="r1"  
+												   x="{displayArea.width/2}" y="{displayArea.height/2}"
+												   skinClass="skins.webelsTitleWindowSkin">
+									</s:TitleWindow>
+							</s:Group>	
+						</s:Group>
+						<s:VGroup id="controlArea" width="266">	
+							<s:Group id="videoControlGroup" width="100%" height="24">
+								<s:Button id="camControl" width="24" height="24" left="2"
+										  click="camToggleManagement()" icon="{icon_cam_off}"
+										  skinClass="skins.webelsButtonSkin"
+										  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_cam_on')}"/>
+								<s:Button id="micControl" width="24" height="24" left="28"
+										  click="micToggleManagement()" icon="{icon_mic_off}"
+										  skinClass="skins.webelsButtonSkin"
+										  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_mic_on')}"/>	
+								<mx:HBox id="micTool" horizontalGap="1" verticalAlign="middle" left="54" top="6">
+									<s:HSlider id="microphoneSlider" 
+											   width="78" 
+											   showDataTip="true"  
+											   dataTipFormatFunction="myDataTipFuncMicrophone"
+											   minimum="0" 
+											   maximum="100"
+											   value="50"  
+											   snapInterval="1" 
+											   liveDragging="true" 
+											   toolTip="{resourceManager.getString('meeting_messages', 'tooltip_mic_gain')}"
+											   change="sliderChangeLiveMicrophone(event);"/>
+								</mx:HBox>
+								<s:Button id="spkrControl" includeInLayout="true" width="24" height="24" left="134"
+										  click="spkrToggleManagement()" icon="{icon_spkr_off}"
+										  skinClass="skins.webelsButtonSkin"
+										  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_spkr_on')}"/>
+								<mx:HBox id="spkrTool" includeInLayout="true" verticalAlign="middle" left="160" top="6">
+									<s:HSlider id="speakerSlider" 
+											   includeInLayout="true" 
+											   width="78" 
+											   showDataTip="true" 
+											   dataTipFormatFunction="myDataTipFuncSpeaker"
+											   minimum="0" 
+											   maximum="100"
+											   value="80"  
+											   snapInterval="1" 
+											   liveDragging="true"
+											   toolTip="{resourceManager.getString('meeting_messages', 'tooltip_spkr_level')}"
+											   change="sliderChangeLiveSpeaker(event);"/>
+								</mx:HBox>
+								<s:Button id="echoControl" width="24" height="24" left="240"
+										  click="echoTestManagement()" icon="{icon_echo_off}"
+										  skinClass="skins.webelsButtonSkin"
+										  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_echo_on')}"/>
+								<s:Spacer width="2"/>
+							</s:Group>
+							<s:HGroup id="adminControlGroup" width="100%" gap="1" paddingLeft="2" paddingRight="2" verticalAlign="middle">		
+								<s:CheckBox id="admin" visible="true"
+											label="{resourceManager.getString('meeting_messages', 'label_admin')}"
+											change="admin_change(event);" 
+											color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+											enabled="true" skinClass="skins.webelsCheckBoxSkin"
+											toolTip="{resourceManager.getString('meeting_messages', 'tooltip_admin')}"/>
+								<s:HGroup id="adminControl" enabled="false" gap="1" verticalAlign="middle" visible="false">
+									<s:Button id="mainvideo" visible="false" width="24"
+											  height="24" click="setMainvideo()"
+											  icon="{icon_main_video}" includeInLayout="false"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_set_mainvideo')}"/>
+									<s:Button id="camBlockUser" visible="true" width="24"
+											  height="24" click="blockUserCam()"
+											  icon="{icon_block_cam_off}" includeInLayout="true"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_block_cam')}"/>
+									<s:Button id="camBlockAllUser" visible="true" width="24"
+											  height="24" click="blockAllUserCam()"
+											  icon="{icon_blockall_cam_off}"
+											  includeInLayout="true"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_blockall_cam')}"/>
+									<s:Button id="micMuteUser" visible="true" width="24"
+											  height="24" click="muteUser()"
+											  icon="{icon_mute_mic_on}" includeInLayout="true"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_mute_mic')}"/>
+									<s:Button id="micMuteAllUser" visible="true" width="24"
+											  height="24" click="muteAllUser()"
+											  icon="{icon_muteall_mic_on}"
+											  includeInLayout="true"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_muteall_mic')}"/>
+									<s:Button id="kickout" visible="false" width="24" height="24"
+											  click="kickUser()" icon="{icon_kickout_off}"
+											  includeInLayout="false"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_kickout')}"/>
+									<s:Button id="invite_SIP_H323" visible="false" width="24"
+											  height="24" click="inviteExternalUser()"
+											  icon="@Embed(source='assets/sip_btn.png')"
+											  includeInLayout="false"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_invite_external_user')}"/>
+									<s:Button id="adminUserManagement" visible="true" width="24"
+											  height="24" click="userManagement()"
+											  icon="@Embed(source='assets/setting-24x24.png')"
+											  includeInLayout="{adminUserManagement.visible}"
+											  skinClass="skins.webelsButtonSkin"
+											  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_invite_external_user')}"/>
+									<s:CheckBox id="sharedDisplay" 
+												label="{resourceManager.getString('meeting_messages', 'label_shared_display')}" 
+												change="sharedDisplay_change(event)" skinClass="skins.webelsCheckBoxSkin"
+												color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+												toolTip="{resourceManager.getString('meeting_messages', 'tooltip_shared_video')}" />
+								</s:HGroup>
+							</s:HGroup>
+						</s:VGroup>
+					</s:VGroup> <!-- videoSection End -->	
+					<s:Spacer height="5" />
+					<s:Group id="detailArea" width="270" height="100%">
+						<mx:TabNavigator id="tabNavigator" width="100%" height="100%" tabWidth="88" paddingTop="2" paddingLeft="2" paddingRight="2" paddingBottom="2">
+							<s:NavigatorContent id="userList" label="{resourceManager.getString('meeting_messages', 'label_user_list')}" 
+													color="{resourceManager.getUint('meeting_messages', 'font_color')}">
+								<mx:DataGrid id="lstUsers" width="100%" height="100%" borderColor="#a9a9a9"
+												 borderStyle="solid" 
+												 dataProvider="{ dpUsers }" doubleClickEnabled="true"
+												 paddingBottom="0" paddingLeft="0" paddingRight="0"
+												 paddingTop="0" sortableColumns="false"
+												 color="{resourceManager.getUint('meeting_messages', 'font_color')}">
+									<mx:columns>
+										<mx:DataGridColumn headerText="{resourceManager.getString('meeting_messages', 'label_name')}" dataField="uname" />
+										<mx:DataGridColumn headerText="{resourceManager.getString('meeting_messages', 'label_status')}" dataField="status"/>
+									</mx:columns>			
+								</mx:DataGrid>
+							</s:NavigatorContent>
+							<s:NavigatorContent id="chatRoom" label="{resourceManager.getString('meeting_messages', 'label_chat_room')}" 
+													color="{resourceManager.getUint('meeting_messages', 'font_color')}" click="chatRoom_clickHandler(event)">
+								<s:VGroup id="chatArea" width="100%" height="100%" click="clearNoticeMsg ()">
+									<s:HGroup width="100%" height="18" paddingLeft="0" paddingRight="0" gap="2">
+										<mx:ColorPicker id="cmpColorPicker" showTextField="false" selectedColor="0x000000"/>
+										<s:TextInput id="txtMsg" width="100%" enter="{sendMessage(txtMsg.text,cmpColorPicker.selectedColor.toString(16))}" 
+														 text="" prompt="{resourceManager.getString('meeting_messages', 'label_message_prompt')}"/>
+										<s:Button id="btnMessage" width="50" cornerRadius="0"
+													  label="{resourceManager.getString('meeting_messages', 'label_message')}"
+													  click="sendMessage(txtMsg.text, cmpColorPicker.selectedColor.toString(16) )"
+													  color="{resourceManager.getUint('meeting_messages', 'font_color')}"
+													  skinClass="skins.sparkButtonSkin"/>
+									</s:HGroup>
+									<mx:TextArea id="txtChatBox" width="100%" height="100%" borderColor="#a9a9a9"
+													 color="#000000" editable="false" paddingLeft="2" htmlText=""
+													 paddingRight="2" styleName="chatBox"
+													 verticalScrollPolicy="auto"/>
+								</s:VGroup>
+							</s:NavigatorContent>
+							<s:NavigatorContent id="fileSharing" label="{resourceManager.getString('meeting_messages', 'label_file_sharing')}" click="fileSharing_clickHandler(event)" updateComplete="fileSharing_updateCompleteHandler(event)">
+								<s:VGroup id="fileSharingGroup" width="100%" height="100%">
+									<s:Label text="Browse file to share"/>
+									<s:HGroup id="fileUploadGroup">
+										<s:TextInput id="fileUpload" prompt="{resourceManager.getString('meeting_messages', 'tooltip_textinput_browse')}" width="170" editable="false" click="fileUpload_clickHandler(event)" />
+										<s:Spacer width="100%"/>
+										<s:Button id="browseBtn" width="60" useHandCursor="true" cornerRadius="0"
+													  click="browseBtn_clickHandler(event)"
+													  label="{resourceManager.getString('meeting_messages', 'label_browse')}"
+													  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_browse')}"
+													  skinClass="skins.sparkButtonSkin"/>
+									</s:HGroup>
+									<mx:ProgressBar id="progressBar" visible="false" includeInLayout="true" width="100%" height="10" label="" labelPlacement="center" mode="manual"/>
+									<s:Label text="Shared Files"/>
+									<mx:DataGrid id="sharedFilesArray" width="100%" height="100%" borderColor="#a9a9a9"
+													 dataProvider="{sharedFilesList}" headerHeight="0"
+													 doubleClickEnabled="true" sortableColumns="true"
+													 color="{resourceManager.getUint('meeting_messages', 'font_color')}">
+										<mx:columns>
+											<mx:DataGridColumn dataField="File"/>
+										</mx:columns> 
+									</mx:DataGrid>
+									<s:HGroup verticalAlign="middle" paddingLeft="0" paddingRight="0" gap="5">
+										<s:Spacer width="100%"/>
+										<s:Button id="deleteBtn"  useHandCursor="true" cornerRadius="0"
+													  label="{resourceManager.getString('meeting_messages', 'label_delete_shared_file')}"
+													  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_delete_shared_file')}"
+													  skinClass="skins.sparkButtonSkin"/>
+										<s:Button id="deleteAllBtn"  useHandCursor="true" cornerRadius="0"
+													  label="{resourceManager.getString('meeting_messages', 'label_delete_all_shared_files')}"
+													  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_delete_all_shared_files')}"
+													  skinClass="skins.sparkButtonSkin"/>
+										<s:Button id="downloadBtn"  useHandCursor="true" cornerRadius="0"
+													  label="{resourceManager.getString('meeting_messages', 'label_download_selected_file')}"
+													  toolTip="{resourceManager.getString('meeting_messages', 'tooltip_download_selected_file')}"
+													  skinClass="skins.sparkButtonSkin"/>							
+										<s:Spacer width="100%"/>
+									</s:HGroup>										
+								</s:VGroup>
+							</s:NavigatorContent>
+						</mx:TabNavigator>
+					</s:Group> <!-- Detail Area End -->
+					<s:Spacer height="1%"/>
+					<s:Label id="bwInfo" visible="false" height="1" includeInLayout="false"/>
+			</s:VGroup> <!-- meetingArea End -->
+			<s:Group id="wbArea" width="100%" height="100%" visible="true" includeInLayout="{wbArea.visible}">
+				<local:whiteboard id="whiteboardArea" width="100%" height="100%" visible="true" includeInLayout="{whiteboardArea.visible}" />
+			</s:Group>
+		</s:HGroup>
+	</s:Panel>
+</s:Application>

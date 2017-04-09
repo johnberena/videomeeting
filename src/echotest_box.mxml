@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ * 
+ * This source code file is part of the WebELS Software System.
+ * WebELS is under the WebELS Software License Agreement. 
+ * 
+ *        ***Preamble of WebELS Software License Agreement***
+ *
+ * This Software License Agreement (hereinafter referred to as License) 
+ * is a legal agreement between the User (either an individual or an entity, 
+ * who will be referred to in this License as User) and the WebELS Project 
+ * (represented by the project leader and patent owner, and will be referred 
+ * to in this License as WebELS) of National Institute of Informatics for 
+ * the use of WebELS Software (Software). By downloading, installing, copying, 
+ * modifying, redistributing, or using the Software, the User is agreeing to 
+ * be bound by the terms and conditions of this License. If you do not agree 
+ * to the terms and conditions of this License, do not download, install, copy, 
+ * modify, redistribute or use in any way as a whole or any part of the Software.
+ *
+ * For more details, see the WebELS Software License Agreement in 
+ * license.txt in root directory of this package. If not found, 
+ * see <http://webels.ex.nii.ac.jp/service/download/license/>
+ *
+ * Should you have any questions concerning this License, or if you desire 
+ * to contact WebELS Project Leader for any reason, please write to:
+ * 
+ * Prof. Haruki Ueno, PhD
+ * Professor Emeritus, National Institute of Informatics
+ * 2-1-2 Hitotsubashi, Chiyodaku
+ * 101-8430 Tokyo,Japan
+ * Tel. +81-3-4212-2630
+ * E-mail: ueno@nii.ac.jp
+ * 
+ * WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+ * http://webels.ex.nii.ac.jp/
+ * Copyright © 2012 by WebELS Project of NII. All rights reserved.
+ *
+-->
+
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				title="Echo Test"
+				close="closeWindow(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.renaun.samples.net.FMSConnection;
+			
+			import flash.geom.Matrix;
+			import flash.net.NetStream;
+			
+			import mx.controls.VideoDisplay;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			private var sender_ns:NetStream = null;
+			private var receiver_ns:NetStream = null;
+			private var echoCam:Camera = null;
+			private var echoMic:Microphone = null;
+			
+			private var clientID:Number = 0;
+			private var qualityArray:Array;
+			private var qualityMode:int = 0;
+			
+			private var SEND_BUFFER_TIME:int = 0;
+			private var RECV_BUFFER_TIME:int = 0;
+			
+			private var main_mic_slider:HSlider = null;
+			private var myShape:Shape = new Shape();
+			private var gradientBoxMatrix:Matrix = new Matrix();
+			private var micDelay:uint = 100;
+			private var micRepeat:uint = 0;
+			private var micTimer:Timer = new Timer(micDelay, micRepeat);
+			
+			public function init(nc:FMSConnection, clientid:Number, qualities:Array, mode:int, mic_slider:HSlider, h264vcodec:Boolean, h264profile:String, h264level:String, sendbuffertime:int, recvbuffertime:int, is_vertical:Boolean = true):void {
+				ExternalInterface.call("console.log", "init");
+				clientID = clientid;
+				qualityArray = qualities;
+				qualityMode = mode;
+				main_mic_slider = mic_slider;
+				microphoneSlider.value = mic_slider.value;
+				SEND_BUFFER_TIME = sendbuffertime; 
+				RECV_BUFFER_TIME = recvbuffertime; 	
+				
+				// H264 Encoding
+				var h264Settings:H264VideoStreamSettings = new H264VideoStreamSettings();  
+				h264Settings.setProfileLevel(h264profile, h264level);  
+		
+				
+				// prepare a diaplay layout
+				if (is_vertical) {
+					mainLayout.width = localVideoBox.width + 4 ; // + border width
+					mainLayout.height = localVideoBox.height + echoVideoBox.height + toolLayout.height;  // + button's height
+					videoLayout.layout = vLayout;
+				}
+				else {
+					mainLayout.width = localVideoBox.width + echoVideoBox.width + 8; // + border width
+					mainLayout.height = localVideoBox.height + toolLayout.height;  // + button's height
+					videoLayout.layout = hLayout;
+				}
+				
+				// establish a stream for sending 
+				sender_ns = new NetStream(nc);
+				sender_ns.bufferTime = SEND_BUFFER_TIME; //Set Buffer time, 0 means minimum delay
+				if (h264vcodec) {
+					sender_ns.videoStreamSettings = h264Settings; // Set H264 Encoding
+					sender_ns.publish("E" + clientID + ".f4v", "live");
+				} else {
+					sender_ns.publish("E" + clientID, "live");
+				}
+				
+				// establish a stream for receiving 
+				receiver_ns = new NetStream(nc);
+				receiver_ns.bufferTime = RECV_BUFFER_TIME; //Set Buffer time, 0 means minimum delay
+				if (h264vcodec) {
+					receiver_ns.play("E" + clientID + ".f4v", -1);
+				} else {
+					receiver_ns.play("E" + clientID, -1);
+				}
+				
+				startEchoTest();
+			}
+			
+			private function closeWindow(evt:CloseEvent):void {
+				// release an attachment of camera and video object
+				for (var j:int = localVideo.numChildren - 1; j >= 0; j--) {
+					var child:DisplayObject = localVideo.getChildAt(j);
+					if(child is Video) {
+						(child as Video).attachCamera(null);
+						(child as Video).attachNetStream(null);
+					}
+				}
+				clearMicActivity();
+				main_mic_slider.value = microphoneSlider.value;
+				sender_ns.close();
+				receiver_ns.close();
+				
+				echoCam = null;
+				echoMic = null;
+				sender_ns = null;
+				receiver_ns = null;
+				
+				PopUpManager.removePopUp(this)
+			}
+			
+			
+			private function startEchoTest():void {
+				ExternalInterface.call("console.log", "startEchoTest");
+				echoCam = Camera.getCamera();  //Get Camera 
+				echoMic = Microphone.getMicrophone();  //Get Microphone
+			
+				if (echoCam != null || echoMic != null) {
+					
+					var vid:Video = null;
+					
+					// sender section
+					if (echoCam != null) {
+						echoCam.setMode(qualityArray[qualityMode].w, qualityArray[qualityMode].h, qualityArray[qualityMode].f);
+						echoCam.setQuality(0, qualityArray[qualityMode].q);
+						
+						// broadcast a video
+						sender_ns.attachCamera(echoCam);
+						
+						// display a local video
+						vid = new Video(localVideo.width, localVideo.height);
+						//vid.width = localVideo.width;
+						//vid.height = localVideo.height;
+						vid.attachCamera(echoCam);
+						localVideo.addChild(vid);
+					}
+					
+					if (echoMic != null) {
+						echoMic.rate = qualityArray[qualityMode].s;
+						// set microphone parameters
+						echoMic.setUseEchoSuppression(true);
+						echoMic.setSilenceLevel(0,5000);
+						echoMic.gain = microphoneSlider.value;
+						
+						// broadcast a voice
+						sender_ns.attachAudio(echoMic);
+						
+						micTimer.addEventListener(TimerEvent.TIMER, showMicActivity);
+						micTimer.start();
+				 	} 
+				
+					// *** receive section
+					vid = new Video(echoVideo.width, echoVideo.height);
+					vid.width = echoVideo.width;
+					vid.height = echoVideo.height;
+					vid.attachNetStream(receiver_ns);
+					echoVideo.addChild(vid);
+				}
+			}
+			
+			//Microphone Activity Level
+			private function showMicActivity(e:TimerEvent):void {
+				gradientBoxMatrix.createGradientBox(120, 10, 0, 0, 0);
+				myShape.graphics.clear();
+				myShape.graphics.beginGradientFill(GradientType.LINEAR, [0x00FF00, 0xFFFF00, 0xFF0000], [0.6, 0.6, 0.6], [0, 192, 255], gradientBoxMatrix);
+				myShape.graphics.drawRect(0, 0, echoMic.activityLevel, 10);
+				myShape.graphics.endFill();
+				micTool.rawChildren.addChild(myShape);
+			}
+			
+			private function clearMicActivity():void {
+				micTimer.stop();
+				myShape.graphics.clear();
+				myShape.graphics.beginFill(0xFFFFFF, 0.0);
+				myShape.graphics.drawRect(0, 0, 100, 10);
+				myShape.graphics.endFill();
+				micTool.rawChildren.addChild(myShape); 
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:VerticalLayout id="vLayout" gap="0" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" horizontalAlign="center" />
+		<s:HorizontalLayout id="hLayout" gap="1" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" horizontalAlign="center"/>
+	</fx:Declarations>
+
+	<s:VGroup id="mainLayout" width="246" height="436">
+		<s:Group id="videoLayout" width="100%" height="100%">
+			<s:layout>
+				<s:VerticalLayout/>
+			</s:layout>
+			<s:Panel id="localVideoBox" width="242" height="214" title="Host">
+				<s:VideoDisplay id="localVideo" width="240" height="180"/>
+			</s:Panel>
+			<s:Panel id="echoVideoBox" width="242" height="214" title="{resourceManager.getString('meeting_messages', 'label_echo_test')}">
+				<s:VideoDisplay id="echoVideo" width="240" height="180"/>
+			</s:Panel>
+		</s:Group>
+		<s:HGroup id="toolLayout" width="100%" height="35" horizontalAlign="center" verticalAlign="middle">
+			<s:Button id="micControl" icon="@Embed(source='assets/microphone-ON-24x24.png')" width="24" height="24" />
+				<mx:HBox id="micTool" verticalAlign="middle">
+					<s:HSlider id="microphoneSlider" width="100%" 
+						minimum="0" 
+						maximum="100"
+						value="50"  
+						snapInterval="1" 
+						liveDragging="true"
+						change="echoMic.gain = microphoneSlider.value;"/>
+				</mx:HBox>
+			<s:Button label="Close" id="closeBtn" click="closeWindow(null)"/>
+		</s:HGroup>
+	</s:VGroup>
+	
+</s:TitleWindow>

@@ -1,0 +1,58 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+mx|Application {
+	background-image: "";
+	background-color: #336699;
+	font-family: Serif, Sans Serif, Tahoma, MS Gothic;
+	font-size: 11px;
+}
+
+s|Application {
+	background-image: "";
+	background-color: #336699;
+	font-family: Serif, Sans Serif, Tahoma, MS Gothic;
+	font-size: 11px;
+}
+
+mx|Panel, mx|TabNavigator {
+	padding-bottom: 10;
+	padding-left: 10;
+	padding-right: 10;
+	padding-top: 10;	
+}
+
+s|Panel, s|TabNavigator {
+	padding-bottom: 10;
+	padding-left: 10;
+	padding-right: 10;
+	padding-top: 10;	
+}
+
+mx|HBox, mx|VBox, mx|HDividedBox, mx|VDividedBox, mx|Button {
+	padding-bottom: 1;
+	padding-left: 1;
+	padding-right: 1;
+	padding-top: 1;	
+}
+
+mx|TileList, mx|TitleWindow, mx|Canvas {
+	padding-bottom: 0;
+	padding-left: 0;
+	padding-right: 0;
+	padding-top: 0;
+	borderThicknessLeft: 1;
+	borderThicknessRight: 1;
+	borderThicknessTop: 1;
+	borderThicknessBottom: 1;
+}
+
+mx|HBox, mx|HDividedBox, mx|VBox, mx|VDividedBox  {
+	horizontalGap: 1;
+	verticalGap: 1;
+}
+
+.chatBox {
+	background-color: #EEEEEE;
+}

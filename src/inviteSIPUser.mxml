@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+* 
+* This source code file is part of the WebELS Software System.
+* WebELS is under the WebELS Software License Agreement. 
+* 
+*        ***Preamble of WebELS Software License Agreement***
+*
+* This Software License Agreement (hereinafter referred to as License) 
+* is a legal agreement between the User (either an individual or an entity, 
+* who will be referred to in this License as User) and the WebELS Project 
+* (represented by the project leader and patent owner, and will be referred 
+* to in this License as WebELS) of National Institute of Informatics for 
+* the use of WebELS Software (Software). By downloading, installing, copying, 
+* modifying, redistributing, or using the Software, the User is agreeing to 
+* be bound by the terms and conditions of this License. If you do not agree 
+* to the terms and conditions of this License, do not download, install, copy, 
+* modify, redistribute or use in any way as a whole or any part of the Software.
+*
+* For more details, see the WebELS Software License Agreement in 
+* license.txt in root directory of this package. If not found, 
+* see <http://webels.ex.nii.ac.jp/service/download/license/>
+*
+* Should you have any questions concerning this License, or if you desire 
+* to contact WebELS Project Leader for any reason, please write to:
+* 
+* Prof. Haruki Ueno, PhD
+* Professor Emeritus, National Institute of Informatics
+* 2-1-2 Hitotsubashi, Chiyodaku
+* 101-8430 Tokyo,Japan
+* Tel. +81-3-4212-2630
+* E-mail: ueno@nii.ac.jp
+* 
+* WebELS Project of the National Institute of Informatics (NII), Tokyo, Japan
+* http://webels.ex.nii.ac.jp/
+* Copyright © 2012 by WebELS Project of NII. All rights reserved.
+*
+-->
+
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   close="handleCloseEvent();"
+			   width="200"
+			   height="225"
+			   skinClass="skins.webelsSipPanelSkin"
+			   title="SIP Dialer">
+
+	<fx:Script>
+		<![CDATA[
+		
+			import com.renaun.samples.net.FMSConnection;
+			
+			import flash.external.ExternalInterface;
+			import flash.net.NetConnection;
+			import flash.net.NetStream;
+			
+			
+			private var configXML:XML;
+			private var myuid:String;
+			private var phone:String;
+			private var user_name:String;
+			private var password:String;
+			private var red5Url:String;
+			private var sipRealm:String;
+			private var sipServer:String; 
+			private var mailbox:String; 
+			private var obProxy:String;
+			
+			private var netConnection:FMSConnection;
+			
+			private static var externalConfig:Object;
+			import mx.managers.PopUpManager;
+			
+			private var SIPDEBUG:Boolean = true;
+			
+			[@Embed(source="assets/dtmf/0.mp3")]
+			public const dtmf0:Class;
+			
+			[@Embed(source="assets/dtmf/1.mp3")]
+			public const dtmf1:Class;
+			
+			[@Embed(source="assets/dtmf/2.mp3")]
+			public const dtmf2:Class;
+			
+			[@Embed(source="assets/dtmf/3.mp3")]
+			public const dtmf3:Class;
+			
+			[@Embed(source="assets/dtmf/4.mp3")]
+			public const dtmf4:Class;
+			
+			[@Embed(source="assets/dtmf/5.mp3")]
+			public const dtmf5:Class;
+			
+			[@Embed(source="assets/dtmf/6.mp3")]
+			public const dtmf6:Class;
+			
+			[@Embed(source="assets/dtmf/7.mp3")]
+			public const dtmf7:Class;
+			
+			[@Embed(source="assets/dtmf/8.mp3")]
+			public const dtmf8:Class;
+			
+			[@Embed(source="assets/dtmf/9.mp3")]
+			public const dtmf9:Class;
+			
+			[@Embed(source="assets/dtmf/hash.mp3")]
+			public const dtmfHash:Class;
+			
+			[@Embed(source="assets/dtmf/star.mp3")]
+			public const dtmfStar:Class;
+			
+			public function init(nc:FMSConnection, clientid:Number):void  {	
+				myDebug(" sip dialer init");
+				stage.addEventListener(KeyboardEvent.KEY_DOWN, keyHandler);
+				
+				statusText.text = "Trying to connect to SIP Server...";
+				NetConnection.defaultObjectEncoding = flash.net.ObjectEncoding.DEFAULT;
+				netConnection = new FMSConnection;
+				netConnection = nc;
+				
+			//	nc.addEventListener( "success", connectionSuccessed );
+			//	nc.addEventListener( "failed", connectionFailed );
+			//	nc.addEventListener( "closed", connectionClosed);
+				
+				statusText.text = "Ready...";
+			}
+			
+			
+		//	private function connectionSuccessed( event:Event ):void {
+			
+			public function doCallChar(chr:String):void {
+			//	To DO: limit the number of characters 
+				dialedNumber.text += chr;
+				myDebug(chr);
+			}
+			
+			public function removeChr():void {
+				var i:int = dialedNumber.text.length;
+				if(i > 0) {
+					dialedNumber.text = dialedNumber.text.substr(0, (i-1));
+				}			
+			}
+			
+			// do call SIP phone
+			private function doCall():void {
+				statusText.text = "Ringing...";
+				myDebug("dialedNumber: " + dialedNumber.text);
+				myDebug("joinToConfCall start");
+				netConnection.call('joinToConfCall', null, dialedNumber.text );
+				myDebug("joinToConfCall end");
+			}
+			
+			//clear dialed number
+			public function clearDial():void {
+				myDebug("clear dialed number");
+				dialedNumber.text = "";	
+				statusText.text = "Ready...";
+			}
+			
+			// Handle the close button and Cancel button.
+			private function handleCloseEvent():void {
+				myDebug("close sip dialer");
+				PopUpManager.removePopUp(this);
+			}  
+			
+			private function keyHandler(event:KeyboardEvent):void {
+				
+				switch(event.charCode) {
+					case 48:
+						doCallChar("0");
+						dtmfZero.play();
+						break;
+					case 49:
+						doCallChar("1");
+						dtmfOne as Sound;
+						dtmfOne.play();
+						break;
+					case 50:
+						doCallChar("2");
+						dtmfTwo.play();
+						break;
+					case 51:
+						doCallChar("3");
+						dtmfThree.play();
+						break;
+					case 52:
+						doCallChar("4");
+						dtmfFour.play();
+						break;
+					case 53:
+						doCallChar("5");
+						dtmfFive.play();
+						break;
+					case 54:
+						doCallChar("6");
+						dtmfSix.play();
+						break;
+					case 55:
+						doCallChar("7");
+						dtmfSeven.play();
+						break;
+					case 56:
+						doCallChar("8");
+						dtmfEight.play();
+						break;
+					case 57:
+						doCallChar("9");
+						dtmfNine.play();
+						break;
+					case 8:
+						removeChr();
+						break;
+					case 127:
+						
+						break;
+					case 35:
+						//doCallChar("#");
+						break;
+					case 42:
+						//doCallChar("*");
+						break;
+					default:
+				}
+			}
+			
+			
+			
+			 // debugging
+			private function myDebug(debugMsg:String):void {
+				if (SIPDEBUG) {
+					ExternalInterface.call("console.log", "--SIPDEBUG-- " + debugMsg);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<mx:SoundEffect id="dtmfOne" useDuration="true" duration="750"  autoLoad="true" source="{dtmf1}"/>
+		<mx:SoundEffect id="dtmfTwo" useDuration="true" duration="750"  autoLoad="true" source="{dtmf2}"/>
+		<mx:SoundEffect id="dtmfThree" useDuration="true" duration="750"  autoLoad="true" source="{dtmf3}"/>
+		<mx:SoundEffect id="dtmfFour"  useDuration="true" duration="750"  autoLoad="true" source="{dtmf4}"/>
+		<mx:SoundEffect id="dtmfFive"  useDuration="true" duration="750"  autoLoad="true" source="{dtmf5}"/>
+		<mx:SoundEffect id="dtmfSix"  useDuration="true" duration="750"  autoLoad="true" source="{dtmf6}"/>
+		<mx:SoundEffect id="dtmfSeven"  useDuration="true" duration="750"  autoLoad="true" source="{dtmf7}"/>
+		<mx:SoundEffect id="dtmfEight"  useDuration="true" duration="750"  autoLoad="true" source="{dtmf8}"/>
+		<mx:SoundEffect id="dtmfNine"   useDuration="true" duration="750"  autoLoad="true" source="{dtmf9}"/>
+		<mx:SoundEffect id="dtmfZero"  useDuration="true"  duration="750"  autoLoad="true" source="{dtmf0}"/>    	
+		<mx:SoundEffect id="dtmfHashEffect" useDuration="true" duration="750"   autoLoad="true" source="{dtmfHash}"/>
+		<mx:SoundEffect id="dtmfStarEffect"   useDuration="true" duration="750"  autoLoad="true" source="{dtmfStar}"/>
+	</fx:Declarations>	
+	
+	<mx:Canvas x="10" y="10" width="180" height="50" borderStyle="solid" cornerRadius="5" backgroundColor="#F0F7FE"  borderColor="#1569C7" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+		<mx:Text id="statusText" text="Initialization..." x="10" y="2" width="160" color="#FF0000"  fontWeight="normal" fontSize="10" fontFamily="Verdana"/>
+		<mx:Text id="dialedNumber" x="10" y="25" width="160" fontWeight="normal" fontSize="12" fontFamily="Verdana"/>
+	</mx:Canvas>
+	
+	
+	<s:Button id="cmdOne" x="10" y="70" label="1" click="doCallChar('1');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfOne}"/>
+	<s:Button id="cmdPound" x="90" y="163" label="#" click="doCallChar('#');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfHashEffect}"/>
+	<s:Button id="cmdZero" x="50" y="163" label="0" click="doCallChar('0');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfZero}"/>
+	<s:Button id="cmdStar" x="10" y="163" label="*" click="doCallChar('*');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfStarEffect}" />
+	<s:Button id="cmdNine" x="90" y="132" label="9" click="doCallChar('9');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfNine}"/>
+	<s:Button id="cmdEight" x="50" y="132" label="8" click="doCallChar('8');"  width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfEight}"/>
+	<s:Button id="cmdSix" x="90" y="101" label="6" click="doCallChar('6');"  width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfSix}"/>
+	<s:Button id="cmdFour" x="10" y="101" label="4" click="doCallChar('4');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfFour}" />
+	<s:Button id="cmdTwo" x="50" y="70" label="2" click="doCallChar('2');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfTwo}" />
+	<s:Button id="cmdThree" x="90" y="70" label="3" click="doCallChar('3');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfThree}" />
+	<s:Button id="cmdFive" x="50" y="101" label="5" click="doCallChar('5');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfFive}" />
+	<s:Button id="cmdSeven" x="10" y="132" label="7" click="doCallChar('7');" width="35" height="23" skinClass="skins.webelsButtonSkin" mouseDownEffect="{dtmfSeven}"/>
+	
+
+	<s:Button id="cmdCall" x="140" y="80" width="50" height="23" label="Call" skinClass="skins.webelsButtonSkin" click="doCall();" /> 
+	<s:Button id="cmdClear" x="140" y="111" width="50" height="23" label="Clear" skinClass="skins.webelsButtonSkin" click="clearDial();"/>
+	<s:Button id="cmdClose"  x="140" y="142" width="50" height="23" label="Close" skinClass="skins.webelsButtonSkin" click="handleCloseEvent();"/> 
+</s:TitleWindow>
